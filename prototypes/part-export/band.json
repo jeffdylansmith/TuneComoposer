@@ -1,0 +1,19 @@
+{
+  "title": "Practice Arrangement",
+  "subtitle": "Band chart demo",
+  "arranger": "Arr. Jeff Smith",
+  "source": "music.ly",
+  "version": "v1.0",
+
+  "parts": {
+    "guitar": { "name": "Guitar", "music": "guitar", "clef": "treble_8", "tuning": "guitar-tuning", "chords": true },
+    "bass":   { "name": "Bass",   "music": "bass",   "clef": "bass_8",   "tuning": "bass-tuning",   "chords": false },
+    "keys":   { "name": "Keys",   "piano": ["keysRH", "keysLH"], "chords": true }
+  },
+
+  "players": [
+    { "name": "Jeff", "part": "guitar", "format": "notation+tab" },
+    { "name": "Sam",  "part": "bass",   "format": "tab" },
+    { "name": "Ria",  "part": "keys",   "format": "notation" }
+  ]
+}
