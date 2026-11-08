@@ -42,7 +42,14 @@ A web app for running a label. Artists, Acts and collaborators work on songs tog
 
 ## Prototype status
 
-- `prototypes/chart-editor`: single-voice, 4/4, guitar or bass. It has piano and tab entry, chords and sections, playback and LilyPond output. Not yet: stacked chords, beaming, key signatures, multiple parts.
+- `prototypes/chart-editor`: a multi-part arrangement with guitar, bass, keys (grand staff) and lead/vocal parts.
+  - Entry: piano entry, tab-first entry (the staff always stays above the tab), and stacked chords
+  - Engraving: beaming by beat group, key signatures with accidentals spelled for the key, and time signatures (2/4, 3/4, 4/4, 5/4, 6/8, 7/8, 9/8, 12/8)
+  - Fretted parts: tuning presets plus per-string custom tunings and extra strings
+  - Chord lane: chord symbols (two per bar allowed) and section labels
+  - Playback of all parts
+  - Export: LilyPond output with a full score book plus one part book per instrument, with tab for fretted parts
+  - Not yet: ties, triplets, time or key changes mid-song, multiple voices per staff, lyrics, and saving anywhere except the browser
 - `prototypes/part-export`: a working generator for the score and per-player parts. It's untested against a real LilyPond install so far.
 
 ## Open questions

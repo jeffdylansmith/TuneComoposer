@@ -185,7 +185,7 @@ pre.code {
   margin: 0; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 14px;
   font: 500 12.5px/1.55 var(--font-mono); overflow: auto; max-height: 52vh; white-space: pre; min-width: 0;
 }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 30; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); top: calc(16px + env(safe-area-inset-top, 0px)); max-width: calc(100% - 32px); text-align: center; background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 30; }
 
 @media (max-width: 560px) {
   #songTitle { font-size: 19px; }
@@ -195,6 +195,48 @@ pre.code {
   .tool { min-width: 40px; min-height: 40px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+/* ---------- Additions: parts row, selects, SVG classes ---------- */
+.parts {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  padding-block: 10px 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.parts .chip {
+  min-height: 40px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface);
+  color: var(--ink); font: 600 14px var(--font-body); cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+}
+.parts .chip small { font: 500 11px var(--font-mono); color: var(--muted); }
+.parts .chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.parts .chip[aria-pressed="true"] small { color: var(--paper); opacity: .75; }
+.parts .chip.ghost { border-style: dashed; background: transparent; font-weight: 500; }
+.sel-wrap { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.sel-wrap select {
+  min-height: 40px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink);
+  font: 500 14px var(--font-body); padding: 0 8px;
+}
+.seg.small button { min-height: 32px; padding: 4px 10px; font-size: 13px; }
+.seg button:disabled { opacity: .4; cursor: not-allowed; }
+.view-group { margin-left: auto; display: inline-flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.view-group .view-toggle { margin-left: 0; }
+.tuning-rows { display: flex; flex-direction: column; gap: 6px; }
+.tuning-row { display: flex; align-items: center; gap: 10px; }
+.tuning-row .sn { width: 70px; font-size: 13px; color: var(--muted); }
+.tuning-row .nn { width: 56px; text-align: center; font: 600 16px var(--font-mono); }
+.tuning-row button { min-width: 44px; min-height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 600 18px var(--font-body); cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.panel-actions .grow { flex: 1 1 auto; }
+
+#score .f-ink { fill: var(--ink); } #score .f-acc { fill: var(--accent); } #score .f-mut { fill: var(--muted); }
+#score .f-dan { fill: var(--danger); } #score .f-paper { fill: var(--paper); } #score .f-surf { fill: var(--surface); }
+#score .f-soft { fill: var(--accent-soft); } #score .f-cur { fill: var(--cursor); } #score .f-none { fill: transparent; }
+#score .s-ink { stroke: var(--ink); } #score .s-acc { stroke: var(--accent); } #score .s-staff { stroke: var(--staff); }
+#score .s-line { stroke: var(--line); } #score .s-dan { stroke: var(--danger); }
+#score .mono { font-family: var(--font-mono); } #score .disp { font-family: var(--font-display); font-weight: 700; }
+#score .body { font-family: var(--font-body); } #score .music { font-family: var(--font-music); }
+#score .blink { animation: blink 1.2s infinite; }
+@keyframes blink { 50% { opacity: .35; } }
 </style>
 
 <div class="app">
@@ -204,20 +246,19 @@ pre.code {
       <input id="songTitle" aria-label="Song title" value="Practice Arrangement">
     </div>
     <div class="controls">
-      <div class="seg" role="group" aria-label="Instrument">
-        <button id="instGuitar" aria-pressed="true">Guitar</button>
-        <button id="instBass" aria-pressed="false">Bass</button>
-      </div>
+      <label class="sel-wrap">Key <select id="keySel" aria-label="Key"></select></label>
+      <label class="sel-wrap">Time <select id="timeSel" aria-label="Time signature"></select></label>
+      <label class="tempo">BPM <input id="tempo" type="number" min="40" max="240" value="100" inputmode="numeric"></label>
       <div class="seg" role="group" aria-label="Write in">
         <button id="modeNotation" aria-pressed="true">Notation</button>
         <button id="modeTab" aria-pressed="false">Tab</button>
       </div>
-      <label class="tempo">BPM <input id="tempo" type="number" min="40" max="240" value="100" inputmode="numeric"></label>
       <button class="btn" id="playBtn">▶ Play</button>
       <button class="btn primary" id="lilyBtn">LilyPond</button>
     </div>
   </header>
 
+  <div class="parts" id="parts" role="group" aria-label="Parts"></div>
   <div class="status" id="status" aria-live="polite"></div>
 
   <div class="sheet" id="sheet">
@@ -229,6 +270,9 @@ pre.code {
       <div class="group" id="durGroup"></div>
       <button class="tool" id="dotBtn" aria-pressed="false" title="Dotted (.)"><span style="font-size:22px;line-height:0">·</span><span class="lbl">&nbsp;Dot</span></button>
       <button class="tool" id="restBtn" title="Rest (R)"><span class="lbl">Rest</span></button>
+      <button class="tool" id="chordBtn" aria-pressed="false" title="Stack notes into a chord (S)">
+        <svg viewBox="0 0 22 26" aria-hidden="true"><ellipse cx="8" cy="21" rx="5" ry="3.5" transform="rotate(-20 8 21)" fill="currentColor"/><ellipse cx="8" cy="14" rx="5" ry="3.5" transform="rotate(-20 8 14)" fill="currentColor"/><ellipse cx="8" cy="7" rx="5" ry="3.5" transform="rotate(-20 8 7)" fill="currentColor"/></svg><span class="lbl">&nbsp;Chord</span>
+      </button>
       <span class="spacer"></span>
       <button class="tool" id="leftBtn" title="Previous (←)" aria-label="Previous note">◀</button>
       <button class="tool" id="rightBtn" title="Next (→)" aria-label="Next note">▶</button>
@@ -243,129 +287,295 @@ pre.code {
 
 <script>
 (() => {
-  // ---------------- Model ----------------
-  const TUNINGS = {
-    guitar: { name: "Guitar", open: [64, 59, 55, 50, 45, 40], labels: ["e", "B", "G", "D", "A", "E"], maxFret: 22, clef: "treble", lyClef: "treble_8", lyTuning: "guitar-tuning", kbStart: 48 },
-    bass:   { name: "Bass",   open: [43, 38, 33, 28],         labels: ["G", "D", "A", "E"],           maxFret: 20, clef: "bass",   lyClef: "bass_8",   lyTuning: "bass-tuning",   kbStart: 36 }
+  // ================= Constants =================
+  const KIND = {
+    guitar: { label: "Guitar", short: "GTR", fretted: true, clef: "treble", oct: 1, lyClef: "treble_8", kb: 48, maxFret: 22, presets: "guitar" },
+    bass:   { label: "Bass", short: "BASS", fretted: true, clef: "bass", oct: 1, lyClef: "bass_8", kb: 24, maxFret: 20, presets: "bass" },
+    keys:   { label: "Keys", short: "KEYS", fretted: false, grand: true, kb: 48 },
+    lead:   { label: "Lead / Vocal", short: "LEAD", fretted: false, clef: "treble", oct: 0, lyClef: "treble", kb: 60 },
   };
+  const PRESETS = {
+    guitar: [
+      { name: "Standard", open: [64, 59, 55, 50, 45, 40] },
+      { name: "Drop D", open: [64, 59, 55, 50, 45, 38] },
+      { name: "Half step down", open: [63, 58, 54, 49, 44, 39] },
+      { name: "DADGAD", open: [62, 57, 55, 50, 45, 38] },
+      { name: "Open G", open: [62, 59, 55, 50, 43, 38] },
+      { name: "Open D", open: [62, 57, 54, 50, 45, 38] },
+      { name: "Baritone (B)", open: [59, 54, 50, 45, 40, 35] },
+      { name: "7-string", open: [64, 59, 55, 50, 45, 40, 35] },
+    ],
+    bass: [
+      { name: "4-string", open: [43, 38, 33, 28] },
+      { name: "Drop D", open: [43, 38, 33, 26] },
+      { name: "5-string", open: [43, 38, 33, 28, 23] },
+      { name: "6-string", open: [48, 43, 38, 33, 28, 23] },
+    ],
+  };
+  const KEYS = [
+    ["C", 0], ["G", 1], ["D", 2], ["A", 3], ["E", 4], ["B", 5], ["F", -1], ["Bb", -2], ["Eb", -3], ["Ab", -4], ["Db", -5],
+    ["Am", 0], ["Em", 1], ["Bm", 2], ["F#m", 3], ["C#m", 4], ["G#m", 5], ["Dm", -1], ["Gm", -2], ["Cm", -3], ["Fm", -4], ["Bbm", -5],
+  ];
+  const TIMES = ["4/4", "3/4", "2/4", "5/4", "6/8", "9/8", "12/8", "7/8"];
   const DURS = [1, 2, 4, 8, 16];
-  const STORE_KEY = "chart-editor-draft-v1";
+  const STORE_KEY = "chart-editor-draft-v2";
 
+  const SH = [[0,0],[0,1],[1,0],[1,1],[2,0],[3,0],[3,1],[4,0],[4,1],[5,0],[5,1],[6,0]];
+  const FL = [[0,0],[1,-1],[1,0],[2,-1],[2,0],[3,0],[4,-1],[4,0],[5,-1],[5,0],[6,-1],[6,0]];
+  const SHARP_ORDER = [3, 0, 4, 1, 5, 2, 6], FLAT_ORDER = [6, 2, 5, 1, 4, 0, 3];
+  const KS_TREBLE_SHARP = [38, 35, 39, 36, 33, 37, 34], KS_TREBLE_FLAT = [34, 37, 33, 36, 32, 35, 31];
+  const LET_UP = "CDEFGAB", LET_LO = "cdefgab";
+  const mod = (a, n) => ((a % n) + n) % n;
+
+  // ================= Model helpers =================
+  function keyFifths() { const k = KEYS.find(k => k[0] === song.key); return k ? k[1] : 0; }
+  function useFlats() { return keyFifths() < 0; }
+  function keyAlters() {
+    const a = [0, 0, 0, 0, 0, 0, 0], f = keyFifths();
+    if (f > 0) SHARP_ORDER.slice(0, f).forEach(l => a[l] = 1);
+    if (f < 0) FLAT_ORDER.slice(0, -f).forEach(l => a[l] = -1);
+    return a;
+  }
+  function timeSig() { const [n, d] = song.time.split("/").map(Number); return { num: n, den: d }; }
+  function barCap() { const t = timeSig(); return t.num / t.den; }
+  function beamGroupLen() {
+    const { num, den } = timeSig();
+    if (den === 8 && num % 3 === 0 && num > 3) return 3 / 8;
+    if (den === 2) return 1 / 2;
+    return 1 / 4;
+  }
+  // Spell each pitch with the name closest to the key on the circle of fifths,
+  // so D major in B♭ shows F♯ and a borrowed chord in G shows B♭. Ties go sharp (raised leading tones in minor).
+  const LPC = [0, 2, 4, 5, 7, 9, 11], LFIFTH = [0, 2, 4, -1, 1, 3, 5];
+  function spellPc(pc) {
+    const center = keyFifths() + 2; let best = null;
+    for (let l = 0; l < 7; l++) {
+      const a = mod(pc - LPC[l] + 6, 12) - 6; if (Math.abs(a) > 1) continue;
+      const pos = LFIFTH[l] + 7 * a, d = Math.abs(pos - center);
+      if (!best || d < best.d || (d === best.d && pos > best.pos)) best = { letter: l, alter: a, pos, d };
+    }
+    return best;
+  }
+  function spell(m) { const s = spellPc(mod(m, 12)); return { letter: s.letter, alter: s.alter, oct: Math.floor((m - s.alter) / 12) - 1 }; }
+  function noteName(m) { const s = spell(m); return LET_UP[s.letter] + (s.alter > 0 ? "♯" : s.alter < 0 ? "♭" : "") + s.oct; }
+  function pcName(pc) { const s = spellPc(mod(pc, 12)); return LET_UP[s.letter] + (s.alter > 0 ? "#" : s.alter < 0 ? "b" : ""); }
+
+  const evLen = e => (1 / e.dur) * (e.dot ? 1.5 : 1);
+  const fillOf = events => events.reduce((a, e) => a + evLen(e), 0);
+  const eq = (a, b) => Math.abs(a - b) < 1e-9;
+  const tk = t => Math.round(t * 96);
+
+  function newPart(kind, name) {
+    const k = KIND[kind];
+    return { id: Math.random().toString(36).slice(2, 8), kind, name: name || k.label,
+      tuning: k.fretted ? PRESETS[k.presets][0].open.slice() : null,
+      bars: song ? song.bars.map(() => []) : [] };
+  }
+  function partKind(p) { return KIND[p.kind]; }
+  function maxFret(p) { return partKind(p).maxFret || 22; }
+
+  // ---------- Tab fingering ----------
+  function bestString(p, midi, prevFret) {
+    let best = null;
+    p.tuning.forEach((open, i) => {
+      const f = midi - open; if (f < 0 || f > maxFret(p)) return;
+      const cost = (prevFret == null ? 0 : Math.abs(f - prevFret) * 0.5) + f * 0.5 + (f > 12 ? 2 : 0);
+      if (!best || cost < best.cost) best = { string: i + 1, fret: f, cost };
+    });
+    if (best) return best;
+    const lowI = p.tuning.length - 1;
+    return midi < p.tuning[lowI] ? { string: lowI + 1, fret: midi - p.tuning[lowI] } : { string: 1, fret: midi - p.tuning[0] };
+  }
+  function fingerChord(p, notes, prevFret) {
+    const n = p.tuning.length, mf = maxFret(p);
+    const ns = notes.slice().sort((a, b) => b.midi - a.midi);
+    if (ns.length === 1) { const r = bestString(p, ns[0].midi, prevFret); ns[0].string = r.string; ns[0].fret = r.fret; return; }
+    let best = null;
+    const assign = new Array(ns.length);
+    const used = new Array(n).fill(false);
+    (function rec(i) {
+      if (i === ns.length) {
+        let cost = 0, fr = [], inv = 0;
+        for (let k = 0; k < ns.length; k++) {
+          const f = ns[k].midi - p.tuning[assign[k]];
+          if (f < 0 || f > mf) cost += 100;
+          else { if (f > 0) fr.push(f); cost += f * 0.15; }
+          if (k > 0 && assign[k] < assign[k - 1]) inv++;
+        }
+        if (fr.length) { const span = Math.max(...fr) - Math.min(...fr); cost += span + (span > 4 ? 20 : 0);
+          if (prevFret != null) cost += Math.abs(Math.min(...fr) - prevFret) * 0.2; }
+        cost += inv * 3;
+        if (!best || cost < best.cost) best = { cost, a: assign.slice() };
+        return;
+      }
+      for (let s = 0; s < n; s++) if (!used[s]) { used[s] = true; assign[i] = s; rec(i + 1); used[s] = false; }
+    })(0);
+    ns.forEach((nt, k) => { nt.string = best.a[k] + 1; nt.fret = nt.midi - p.tuning[best.a[k]]; });
+  }
+  function fingerPart(p) {
+    if (!partKind(p).fretted) return;
+    let prev = null;
+    p.bars.forEach(b => b.forEach(e => {
+      if (e.type !== "note") return;
+      fingerChord(p, e.notes, prev);
+      const fr = e.notes.map(n => n.fret).filter(f => f > 0);
+      if (fr.length) prev = Math.min(...fr);
+    }));
+  }
+
+  // ================= Example song =================
   function exampleSong() {
-    const s = { title: "Practice Arrangement", instrument: "guitar", tempo: 100, bars: [
-      { section: "Intro", chord: "G",  events: [] },
-      { section: "",      chord: "D",  events: [] },
-      { section: "",      chord: "Em", events: [] },
-      { section: "",      chord: "C",  events: [] },
-      { section: "Verse", chord: "G",  events: [] },
-    ]};
-    const fill = (i, midis) => midis.forEach(m => s.bars[i].events.push({ type: "note", dur: 8, dot: false, midi: m }));
-    fill(0, [43, 50, 55, 59, 62, 59, 55, 50]);
-    fill(1, [50, 57, 62, 66, 69, 66, 62, 57]);
-    fill(2, [40, 47, 52, 55, 59]);
-    assignAllStrings(s);
+    const s = { title: "Practice Arrangement", tempo: 100, key: "G", time: "4/4", parts: [],
+      bars: [
+        { section: "Intro", chord: "G" }, { section: "", chord: "D" }, { section: "", chord: "Em" }, { section: "", chord: "C" },
+        { section: "Verse", chord: "G" }, { section: "", chord: "D" }, { section: "", chord: "Em" }, { section: "", chord: "C D" },
+      ] };
+    song = s;
+    const n = (dur, midis, dot) => ({ type: "note", dur, dot: !!dot, notes: midis.map(m => ({ midi: m })) });
+    const arp = ms => ms.map(m => n(8, [m]));
+    const strum = v => [n(4, v), n(4, v), n(8, v), n(8, v), n(4, v)];
+    const V = { G: [43, 47, 50, 55, 59, 67], D: [50, 57, 62, 66], Em: [40, 47, 52, 55, 59, 64], C: [48, 52, 55, 60, 64] };
+
+    const gtr = newPart("guitar");
+    gtr.bars = [
+      arp([43, 50, 55, 59, 62, 59, 55, 50]), arp([50, 57, 62, 66, 69, 66, 62, 57]),
+      arp([40, 47, 52, 55, 59, 55, 52, 47]), arp([48, 55, 60, 64, 67, 64, 60, 55]),
+      strum(V.G), strum(V.D), strum(V.Em), [n(4, V.C), n(4, V.C), n(8, V.D), n(8, V.D), n(4, V.D)],
+    ];
+    const bass = newPart("bass");
+    const groove = (r, f) => [n(4, [r], true), n(8, [r]), n(4, [f]), n(8, [r + 12]), n(8, [f])];
+    bass.bars = [
+      [n(2, [31]), n(2, [38])], [n(2, [38]), n(2, [45])], [n(2, [28]), n(2, [35])], [n(2, [36]), n(2, [43])],
+      groove(31, 38), groove(38, 45), groove(28, 35), [n(4, [36], true), n(8, [36]), n(4, [38]), n(8, [38]), n(8, [45])],
+    ];
+    const keys = newPart("keys");
+    keys.bars = [[], [], [], [],
+      [n(2, [43, 59, 62, 67]), n(2, [43, 59, 62, 67])], [n(2, [38, 57, 62, 66]), n(2, [38, 57, 62, 66])],
+      [n(2, [40, 59, 64, 67]), n(2, [40, 59, 64, 67])], [n(2, [36, 55, 60, 64]), n(2, [38, 57, 62, 66])],
+    ];
+    s.parts = [gtr, bass, keys];
+    s.parts.forEach(fingerPart);
     return s;
   }
 
-  let song;
+  let song = null;
   try { const raw = localStorage.getItem(STORE_KEY); if (raw) song = JSON.parse(raw); } catch (e) { song = null; }
-  if (!song || !Array.isArray(song.bars) || !song.bars.length) song = exampleSong();
+  if (!song || !Array.isArray(song.parts) || !song.parts.length || !Array.isArray(song.bars)) song = exampleSong();
 
   const state = {
-    cur: { bar: 2, pos: song.bars[2] ? song.bars[2].events.length : 0 },
+    part: 0,
+    cur: { bar: 0, pos: 0 },
     sel: null,
-    dur: 8, dot: false,
+    dur: 8, dot: false, chord: false,
     mode: "notation",
+    view: "all",
     showNotation: true,
     tabString: 3,
-    kbStart: TUNINGS[song.instrument].kbStart,
+    kbStart: partKind(song.parts[0]).kb,
     undo: [],
     playing: null,
     fretBuf: "", fretTimer: 0,
   };
-  if (state.cur.bar >= song.bars.length) state.cur = { bar: song.bars.length - 1, pos: song.bars[song.bars.length - 1].events.length };
+  state.cur = { bar: song.bars.length - 1, pos: song.parts[0].bars[song.bars.length - 1].length };
 
-  function tuning() { return TUNINGS[song.instrument]; }
-  const evLen = ev => (1 / ev.dur) * (ev.dot ? 1.5 : 1);
-  const barFill = b => b.events.reduce((a, e) => a + evLen(e), 0);
-  const eq = (a, b) => Math.abs(a - b) < 1e-9;
-
+  const P = () => song.parts[state.part];
   function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(song)); } catch (e) {} }
-  function pushUndo() { state.undo.push(JSON.stringify({ song, cur: state.cur, sel: state.sel })); if (state.undo.length > 100) state.undo.shift(); }
+  function pushUndo() {
+    state.undo.push(JSON.stringify({ song, cur: state.cur, sel: state.sel, part: state.part }));
+    if (state.undo.length > 100) state.undo.shift();
+  }
   function undo() {
     const s = state.undo.pop(); if (!s) return toast("Nothing to undo");
-    const o = JSON.parse(s); song = o.song; state.cur = o.cur; state.sel = o.sel; syncInstrumentUI(); commit(false);
+    const o = JSON.parse(s); song = o.song; state.cur = o.cur; state.sel = o.sel; state.part = o.part;
+    syncHeader(); renderParts(); renderPad(); commit();
+  }
+  function commit() { save(); render(); reveal(); }
+  // Keep the cursor or selection on screen while entering notes.
+  function reveal() {
+    const el = document.getElementById("selMark") || document.getElementById("cursorMark");
+    if (!el) return;
+    const sheet = document.getElementById("sheet");
+    const r = el.getBoundingClientRect(), s = sheet.getBoundingClientRect();
+    if (r.top < s.top + 8 || r.bottom > s.bottom - 8) sheet.scrollTop += (r.top - s.top) - 70;
+    if (r.left < s.left + 8 || r.right > s.right - 8) sheet.scrollLeft += (r.left - s.left) - 80;
   }
 
-  // ---------------- Pitch & tab helpers ----------------
-  function bestString(midi, prevFret) {
-    const t = tuning(); let best = null;
-    t.open.forEach((open, i) => {
-      const f = midi - open; if (f < 0 || f > t.maxFret) return;
-      const cost = (prevFret == null ? 0 : Math.abs(f - prevFret) * 0.5) + f * 0.5 + (f > 12 ? 2 : 0);
-      if (!best || cost < best.cost) best = { string: i + 1, fret: f, cost };
-    });
-    if (!best) { // out of range: put it on the nearest string so it still shows
-      const low = t.open[t.open.length - 1];
-      return midi < low ? { string: t.open.length, fret: midi - low, out: true } : { string: 1, fret: midi - t.open[0], out: true };
-    }
-    return best;
-  }
-  function assignAllStrings(s) {
-    const save = song; song = s; let prev = null;
-    s.bars.forEach(b => b.events.forEach(e => { if (e.type !== "note") return; const r = bestString(e.midi, prev); e.string = r.string; e.fret = r.fret; prev = r.fret; }));
-    song = save;
-  }
-  const LETTER = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
-  const SHARP  = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0];
-  const NAMES = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
-  const LY = ["c", "cis", "d", "dis", "e", "f", "fis", "g", "gis", "a", "ais", "b"];
-  const noteName = m => NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
-  function staffStep(midi) { const w = midi + 12; const pc = ((w % 12) + 12) % 12; return (Math.floor(w / 12) - 1) * 7 + LETTER[pc]; }
+  function addBar() { song.bars.push({ section: "", chord: "" }); song.parts.forEach(p => p.bars.push([])); }
 
-  // ---------------- Editing ----------------
-  function flat() { const out = []; song.bars.forEach((b, bi) => b.events.forEach((e, ei) => out.push({ bar: bi, idx: ei }))); return out; }
-  function selected() { return state.sel ? song.bars[state.sel.bar].events[state.sel.idx] : null; }
-  const newBar = () => ({ section: "", chord: "", events: [] });
+  // ================= Editing =================
+  function flat() { const out = []; P().bars.forEach((b, bi) => b.forEach((e, ei) => out.push({ bar: bi, idx: ei }))); return out; }
+  function selected() { const s = state.sel; return s ? song.parts[s.part].bars[s.bar][s.idx] : null; }
 
   function prevFretAtCursor() {
     const f = flat(); let k;
     if (state.sel) k = f.findIndex(p => p.bar === state.sel.bar && p.idx === state.sel.idx) - 1;
-    else k = f.findIndex(p => p.bar > state.cur.bar || (p.bar === state.cur.bar && p.idx >= state.cur.pos)) - 1;
-    if (k < -1) k = f.length - 1;
-    for (; k >= 0; k--) { const e = song.bars[f[k].bar].events[f[k].idx]; if (e.type === "note") return e.fret; }
+    else { k = f.findIndex(p => p.bar > state.cur.bar || (p.bar === state.cur.bar && p.idx >= state.cur.pos)); k = (k === -1 ? f.length : k) - 1; }
+    for (; k >= 0; k--) {
+      const e = P().bars[f[k].bar][f[k].idx];
+      if (e.type === "note") { const fr = e.notes.map(n => n.fret).filter(x => x > 0); if (fr.length) return Math.min(...fr); }
+    }
     return null;
   }
 
   function insertEvent(ev) {
     pushUndo();
+    const cap = barCap();
     let { bar, pos } = state.cur;
-    let b = song.bars[bar];
-    if (pos === b.events.length && b.events.length && barFill(b) + evLen(ev) > 1 + 1e-9) {
-      bar++; if (!song.bars[bar]) song.bars.push(newBar()); pos = 0; b = song.bars[bar];
+    let b = P().bars[bar];
+    if (pos === b.length && b.length && fillOf(b) + evLen(ev) > cap + 1e-9) {
+      bar++; if (!song.bars[bar]) addBar(); pos = 0; b = P().bars[bar];
     }
-    b.events.splice(pos, 0, ev);
+    b.splice(pos, 0, ev);
     state.cur = { bar, pos: pos + 1 };
-    if (pos + 1 === b.events.length && eq(barFill(b), 1)) {
-      if (!song.bars[bar + 1]) song.bars.push(newBar());
+    if (state.chord) state.sel = { part: state.part, bar, idx: pos };
+    else if (pos + 1 === b.length && eq(fillOf(b), cap)) {
+      if (!song.bars[bar + 1]) addBar();
       state.cur = { bar: bar + 1, pos: 0 };
     }
     commit();
   }
 
   function enterPitch(midi, forcedString) {
-    let string, fret;
-    if (forcedString) { string = forcedString; fret = midi - tuning().open[string - 1]; }
-    else { const r = bestString(midi, prevFretAtCursor()); string = r.string; fret = r.fret; }
-    const sel = selected();
-    if (sel) { pushUndo(); Object.assign(sel, { type: "note", midi, string, fret }); commit(); }
-    else insertEvent({ type: "note", dur: state.dur, dot: state.dot, midi, string, fret });
-    state.tabString = string; renderPad();
-    blip(midi);
+    const p = P(), k = partKind(p), sel = selected();
+    const mk = () => {
+      const nt = { midi };
+      if (k.fretted) {
+        if (forcedString) { nt.string = forcedString; nt.fret = midi - p.tuning[forcedString - 1]; }
+        else { const r = bestString(p, midi, prevFretAtCursor()); nt.string = r.string; nt.fret = r.fret; }
+      }
+      return nt;
+    };
+    if (state.chord && sel) {
+      pushUndo();
+      if (sel.type === "rest") { sel.type = "note"; sel.notes = []; }
+      if (forcedString) {
+        const j = sel.notes.findIndex(n => n.string === forcedString);
+        if (j >= 0 && sel.notes[j].midi === midi) sel.notes.splice(j, 1);
+        else { if (j >= 0) sel.notes.splice(j, 1); sel.notes.push(mk()); }
+      } else {
+        const i = sel.notes.findIndex(n => n.midi === midi);
+        if (i >= 0) sel.notes.splice(i, 1);
+        else {
+          if (k.fretted && sel.notes.length >= p.tuning.length) { state.undo.pop(); return toast(`${p.name} has ${p.tuning.length} strings, so a chord can have at most ${p.tuning.length} notes`); }
+          sel.notes.push({ midi });
+          if (k.fretted) fingerChord(p, sel.notes, prevFretAtCursor());
+        }
+      }
+      if (!sel.notes.length) { sel.type = "rest"; delete sel.notes; }
+      commit();
+    } else if (sel) {
+      pushUndo(); sel.type = "note"; sel.notes = [mk()]; commit();
+    } else {
+      insertEvent({ type: "note", dur: state.dur, dot: state.dot, notes: [mk()] });
+    }
+    if (forcedString) state.tabString = forcedString;
+    else { const s = selected(); }
+    renderPad();
+    blip([midi]);
   }
   function enterRest() {
     const sel = selected();
-    if (sel) { pushUndo(); sel.type = "rest"; delete sel.midi; delete sel.string; delete sel.fret; commit(); }
+    if (sel) { pushUndo(); sel.type = "rest"; delete sel.notes; commit(); }
     else insertEvent({ type: "rest", dur: state.dur, dot: state.dot });
   }
   function setDur(d) {
@@ -377,17 +587,23 @@ pre.code {
     if (sel) { pushUndo(); sel.dot = !sel.dot; state.dot = sel.dot; commit(); }
     else { state.dot = !state.dot; renderToolbar(); }
   }
+  function toggleChord() {
+    state.chord = !state.chord;
+    renderToolbar();
+    toast(state.chord ? "Chord on: notes stack until you tap ▶" : "Chord off");
+  }
   function del() {
     pushUndo();
     if (state.sel) {
-      const { bar, idx } = state.sel; song.bars[bar].events.splice(idx, 1);
+      const { bar, idx } = state.sel; P().bars[bar].splice(idx, 1);
       state.sel = null; state.cur = { bar, pos: idx };
     } else {
       const { bar, pos } = state.cur;
-      if (pos > 0) { song.bars[bar].events.splice(pos - 1, 1); state.cur = { bar, pos: pos - 1 }; }
+      if (pos > 0) { P().bars[bar].splice(pos - 1, 1); state.cur = { bar, pos: pos - 1 }; }
       else if (bar > 0) {
-        if (!song.bars[bar].events.length && !song.bars[bar].chord && !song.bars[bar].section) song.bars.splice(bar, 1);
-        const pb = song.bars[bar - 1]; state.cur = { bar: bar - 1, pos: pb.events.length };
+        const allEmpty = song.parts.every(p => !p.bars[bar].length);
+        if (allEmpty && !song.bars[bar].chord && !song.bars[bar].section) { song.bars.splice(bar, 1); song.parts.forEach(p => p.bars.splice(bar, 1)); }
+        state.cur = { bar: bar - 1, pos: P().bars[bar - 1].length };
       } else { state.undo.pop(); return; }
     }
     commit();
@@ -396,247 +612,534 @@ pre.code {
     const f = flat();
     if (state.sel) {
       const k = f.findIndex(p => p.bar === state.sel.bar && p.idx === state.sel.idx);
-      if (dir < 0) { if (k > 0) state.sel = f[k - 1]; }
-      else if (k + 1 < f.length) state.sel = f[k + 1];
-      else { state.cur = { bar: state.sel.bar, pos: state.sel.idx + 1 }; state.sel = null; }
+      if (dir < 0) { if (k > 0) state.sel = { part: state.part, ...f[k - 1] }; }
+      else if (k + 1 < f.length) state.sel = { part: state.part, ...f[k + 1] };
+      else {
+        const b = P().bars[state.sel.bar];
+        state.cur = { bar: state.sel.bar, pos: state.sel.idx + 1 }; state.sel = null;
+        if (state.cur.pos === b.length && fillOf(b) >= barCap() - 1e-9) { if (!song.bars[state.cur.bar + 1]) addBar(); state.cur = { bar: state.cur.bar + 1, pos: 0 }; }
+      }
     } else {
       const k = f.findIndex(p => p.bar > state.cur.bar || (p.bar === state.cur.bar && p.idx >= state.cur.pos));
-      if (dir < 0) { const j = (k === -1 ? f.length : k) - 1; if (j >= 0) state.sel = f[j]; }
-      else if (k !== -1) state.sel = f[k];
+      if (dir < 0) { const j = (k === -1 ? f.length : k) - 1; if (j >= 0) state.sel = { part: state.part, ...f[j] }; }
+      else if (k !== -1) state.sel = { part: state.part, ...f[k] };
     }
-    syncFromSelection(); render();
+    syncFromSelection(); render(); reveal();
   }
   function transpose(semi) {
     const sel = selected(); if (!sel || sel.type !== "note") return;
-    pushUndo(); sel.midi += semi; const r = bestString(sel.midi, sel.fret); sel.string = r.string; sel.fret = r.fret;
-    commit(); blip(sel.midi);
+    pushUndo(); sel.notes.forEach(n => n.midi += semi);
+    if (partKind(P()).fretted) fingerChord(P(), sel.notes, prevFretAtCursor());
+    commit(); blip(sel.notes.map(n => n.midi));
   }
   function changeString(delta) {
-    const n = tuning().open.length; const sel = selected();
-    if (sel && sel.type === "note") {
-      const s = sel.string + delta; if (s < 1 || s > n) return;
-      const f = sel.midi - tuning().open[s - 1]; if (f < 0 || f > tuning().maxFret) return toast("That note isn't playable on the " + tuning().labels[s - 1] + " string");
-      pushUndo(); sel.string = s; sel.fret = f; state.tabString = s; commit(); renderPad();
+    const p = P(); const n = p.tuning.length; const sel = selected();
+    if (sel && sel.type === "note" && sel.notes.length === 1) {
+      const nt = sel.notes[0]; const s = nt.string + delta; if (s < 1 || s > n) return;
+      const f = nt.midi - p.tuning[s - 1];
+      if (f < 0 || f > maxFret(p)) return toast("That note isn't playable on string " + s);
+      pushUndo(); nt.string = s; nt.fret = f; state.tabString = s; commit(); renderPad();
     } else { state.tabString = Math.min(n, Math.max(1, state.tabString + delta)); renderPad(); }
   }
   function syncFromSelection() {
     const sel = selected();
-    if (sel) { state.dur = sel.dur; state.dot = !!sel.dot; if (sel.type === "note") state.tabString = sel.string; }
+    if (sel) { state.dur = sel.dur; state.dot = !!sel.dot; }
     renderToolbar(); renderPad();
   }
-  function commit(record) { save(); render(); }
-
-  // ---------------- Rendering ----------------
-  const svg = document.getElementById("score");
-  const NS = "http://www.w3.org/2000/svg";
-  const G = 9;      // staff space
-  const T = 13;     // tab line gap
-  const EVW = { 1: 74, 2: 54, 4: 40, 8: 31, 16: 27 };
-  const evWidth = e => Math.round(EVW[e.dur] * (e.dot ? 1.2 : 1));
-  const barWidth = b => Math.max(120, 22 + b.events.reduce((a, e) => a + evWidth(e), 0) + 20);
-  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-
-  function render() {
-    renderScore(); renderStatus(); renderToolbar();
+  function setActivePart(i) {
+    if (i === state.part) return;
+    state.part = i; state.sel = null;
+    const bar = Math.min(state.cur.bar, song.bars.length - 1);
+    state.cur = { bar, pos: P().bars[bar].length };
+    state.kbStart = partKind(P()).kb;
+    if (!partKind(P()).fretted) state.mode = "notation";
+    else state.tabString = Math.min(state.tabString, P().tuning.length);
+    syncMode(); renderParts(); renderPad(); render();
   }
 
-  function renderScore() {
-    const t = tuning();
-    const avail = Math.max(320, document.getElementById("sheet").clientWidth - 34);
-    const nStr = t.open.length;
-    const tabFirst = state.mode === "tab";
-    const showStaff = state.showNotation || !tabFirst;
-    const showTabRhythm = tabFirst && !state.showNotation;
+  // ================= Rendering =================
+  const svg = document.getElementById("score");
+  const G = 9, T = 13;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const prettyChord = s => esc(s).replace(/#/g, "♯").replace(/([A-G])b/g, "$1♭");
 
-    // Break bars into rows.
+  function visibleParts() { return state.view === "all" ? song.parts.map((_, i) => i) : [state.part]; }
+
+  function layersFor(pi) {
+    const p = song.parts[pi], k = partKind(p), active = pi === state.part;
+    const L = [];
+    if (k.grand) {
+      L.push({ type: "staff", clef: "treble", oct: 0, filter: m => m >= 60, h: 4 * G });
+      L.push({ type: "staff", clef: "bass", oct: 0, filter: m => m < 60, h: 4 * G });
+    } else {
+      const hide = active && k.fretted && state.mode === "tab" && !state.showNotation;
+      if (!hide) L.push({ type: "staff", clef: k.clef, oct: k.oct, filter: null, h: 4 * G });
+      if (k.fretted && active) L.push({ type: "tab", h: (p.tuning.length - 1) * T });
+      if (hide) L.push({ type: "rhythm", h: 22 });
+    }
+    L.forEach(l => { const r = l.type === "staff" ? staffRoom(p, l) : { above: 4, below: l.type === "tab" ? 4 : 2 }; l.above = r.above; l.below = r.below; });
+    let y = 0;
+    L.forEach((l, i) => {
+      if (i > 0) { const pr = L[i - 1]; y += pr.h + Math.max(pr.type === "tab" ? 6 : 30, pr.below + l.above + 8); }
+      l.y = y;
+    });
+    return { layers: L, h: y + L[L.length - 1].h, above: L[0].above, below: L[L.length - 1].below };
+  }
+  // How far notes and stems reach above and below a staff, across the whole song, so nothing collides.
+  function staffRoom(p, l) {
+    const bottomStep = l.clef === "treble" ? 30 : 18, topStep = bottomStep + 8, mid = bottomStep + 4;
+    let above = 6, below = 6;
+    p.bars.forEach(b => b.forEach(e => {
+      if (e.type !== "note") return;
+      const steps = e.notes.filter(n => !l.filter || l.filter(n.midi)).map(n => { const s = spell(n.midi); return (s.oct + l.oct) * 7 + s.letter; });
+      if (!steps.length) return;
+      const lo = Math.min(...steps), hi = Math.max(...steps), up = (lo + hi) / 2 < mid, stem = e.dur >= 2 ? 7.5 : 0;
+      above = Math.max(above, (hi + (up ? stem : 0) - topStep) * G / 2 + 6);
+      below = Math.max(below, (bottomStep - lo + (up ? 0 : stem)) * G / 2 + 6);
+    }));
+    return { above, below };
+  }
+
+  function barSpacing(bi, parts, scale) {
+    const cap = barCap();
+    const times = new Map(); // key -> {t, dot}
+    const add = (t, dot) => { const k = tk(t); const o = times.get(k) || { t, dot: false }; o.dot = o.dot || dot; times.set(k, o); };
+    add(0, false); add(cap, false);
+    parts.forEach(pi => { let t = 0; song.parts[pi].bars[bi].forEach(e => { add(t, !!e.dot); t += evLen(e); }); add(t, false); });
+    const list = [...times.values()].sort((a, b) => a.t - b.t);
+    const pos = new Map(); let x = 22;
+    list.forEach((o, i) => {
+      pos.set(tk(o.t), x);
+      if (i < list.length - 1) {
+        const gap = list[i + 1].t - o.t;
+        x += (Math.max(20, 28 + 11 * Math.log2(Math.max(gap, 1 / 32) * 16)) + (o.dot ? 6 : 0)) * scale;
+      }
+    });
+    const end = pos.get(tk(list[list.length - 1].t));
+    return { pos, w: Math.max(96, end + 10) };
+  }
+
+  function render() { renderScore(); renderStatus(); renderToolbar(); }
+
+  function renderScore() {
+    const parts = visibleParts();
+    const blocks = parts.map(pi => ({ pi, active: pi === state.part, ...layersFor(pi) }));
+    const nAcc = Math.abs(keyFifths());
+    const headFor = first => 40 + (nAcc ? nAcc * 8 + 6 : 0) + (first ? 26 : 0);
+    const avail = Math.max(320, document.getElementById("sheet").clientWidth - 34);
+    const sp = song.bars.map((_, bi) => barSpacing(bi, parts, avail < 640 ? 0.72 : 1));
+
     const rows = []; let row = [], x = 0;
     song.bars.forEach((b, i) => {
-      const head = rows.length === 0 && row.length === 0 ? 74 : 52;
-      const w = barWidth(b);
-      if (row.length && x + w > avail) { rows.push(row); row = []; x = 0; }
-      if (!row.length) x = (rows.length === 0 ? 74 : 52);
+      const w = sp[i].w;
+      if (row.length && x + w > avail) { rows.push(row); row = []; }
+      if (!row.length) x = headFor(rows.length === 0);
       row.push({ i, x, w }); x += w;
     });
     if (row.length) rows.push(row);
 
-    const staffH = 4 * G, tabH = (nStr - 1) * T;
-    const blockGap = 46;
-    const rowContent = (showStaff ? staffH : 0) + tabH + (showStaff ? blockGap : 0) + (showTabRhythm ? 26 : 0);
-    const rowH = 56 + rowContent + 44;
+    const LANE = Math.max(60, 48 + blocks[0].above), BOTTOM = Math.max(40, blocks[blocks.length - 1].below + 22);
+    const gapAfter = j => Math.max(46, blocks[j].below + blocks[j + 1].above + 22);
+    let rowH = LANE + BOTTOM;
+    blocks.forEach((b, j) => { rowH += b.h + (j < blocks.length - 1 ? gapAfter(j) : 0); });
     const width = Math.max(avail, ...rows.map(r => r[r.length - 1].x + r[r.length - 1].w)) + 4;
-    const height = rows.length * rowH + 10;
     let out = "";
 
     rows.forEach((r, ri) => {
       const top = ri * rowH + 6;
-      const sectionY = top + 12, chordY = top + 36;
-      let staffTop, tabTop;
-      if (tabFirst) { tabTop = top + 56; staffTop = tabTop + tabH + blockGap; }
-      else { staffTop = top + 56; tabTop = staffTop + staffH + blockGap; }
-      const staffBot = staffTop + staffH;
       const rowEnd = r[r.length - 1].x + r[r.length - 1].w;
-      const bottomStep = t.clef === "treble" ? 30 : 18;
-      const yOf = s => staffBot - (s - bottomStep) * G / 2;
-      const yStr = s => tabTop + (s - 1) * T;
-      const colTop = Math.min(showStaff ? staffTop : 1e9, tabTop) - 10;
-      const colBot = Math.max(showStaff ? staffBot : 0, tabTop + tabH + (showTabRhythm ? 26 : 0)) + 10;
+      const head = headFor(ri === 0);
+      let bt = top + LANE;
+      blocks.forEach((b, j) => { b.top = bt; bt += b.h + (j < blocks.length - 1 ? gapAfter(j) : 0); });
+      const sysTop = blocks[0].top, sysBot = blocks[blocks.length - 1].top + blocks[blocks.length - 1].h;
 
-      // Staff lines + clef
-      if (showStaff) {
-        for (let l = 0; l < 5; l++) out += `<line x1="0" x2="${rowEnd}" y1="${staffTop + l * G}" y2="${staffTop + l * G}" stroke="var(--staff)" stroke-width="1"/>`;
-        if (t.clef === "treble") out += `<text x="4" y="${staffBot - 2}" font-family='${'"Noto Music", "Apple Symbols", serif'}' font-size="42" fill="var(--ink)">𝄞</text><text x="15" y="${staffBot + 20}" font-size="10" font-family="var(--font-mono)" fill="var(--ink)">8</text>`;
-        else out += `<text x="4" y="${staffTop + 27}" font-family='"Noto Music", "Apple Symbols", serif' font-size="36" fill="var(--ink)">𝄢</text><text x="12" y="${staffBot + 18}" font-size="10" font-family="var(--font-mono)" fill="var(--ink)">8</text>`;
-        if (ri === 0) out += `<text x="46" y="${staffTop + 2 * G - 2}" font-family="var(--font-display)" font-weight="700" font-size="19" fill="var(--ink)">4</text><text x="46" y="${staffBot - 2}" font-family="var(--font-display)" font-weight="700" font-size="19" fill="var(--ink)">4</text>`;
-        out += `<line x1="0" x2="0" y1="${staffTop}" y2="${staffBot}" stroke="var(--staff)"/>`;
-      }
-      // Tab lines + "TAB"
-      for (let s = 1; s <= nStr; s++) out += `<line x1="0" x2="${rowEnd}" y1="${yStr(s)}" y2="${yStr(s)}" stroke="var(--staff)" stroke-width="1"/>`;
-      const tabLabelY = tabTop + tabH / 2;
-      ["T", "A", "B"].forEach((c, k) => out += `<text x="14" y="${tabLabelY - 11 + k * 12}" font-family="var(--font-display)" font-weight="700" font-size="12" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle">${c}</text>`);
-      t.labels.forEach((lab, k) => out += `<text x="32" y="${yStr(k + 1)}" font-family="var(--font-mono)" font-size="9" fill="var(--muted)" dominant-baseline="middle">${lab}</text>`);
-      out += `<line x1="0" x2="0" y1="${tabTop}" y2="${tabTop + tabH}" stroke="var(--staff)"/>`;
-
+      // Lane: sections + chords
       r.forEach(({ i, x: bx, w }) => {
-        const b = song.bars[i];
-        const isCurBar = !state.sel && state.cur.bar === i;
-        // Bar hit target (behind everything in the bar)
-        out += `<rect class="hit" data-bar="${i}" x="${bx}" y="${colTop}" width="${w}" height="${colBot - colTop}" fill="${isCurBar ? "var(--accent-soft)" : "transparent"}" opacity="${isCurBar ? 0.55 : 1}"/>`;
-        // Section + chord lane
-        if (b.section) {
-          const sw = 14 + b.section.length * 7.4;
-          out += `<g class="hit" data-chord="${i}"><rect x="${bx + 4}" y="${sectionY - 11}" width="${sw}" height="20" rx="4" fill="var(--surface)" stroke="var(--ink)"/><text x="${bx + 4 + sw / 2}" y="${sectionY}" text-anchor="middle" dominant-baseline="middle" font-family="var(--font-display)" font-weight="700" font-size="12" fill="var(--ink)">${esc(b.section)}</text></g>`;
+        const bar = song.bars[i];
+        const sectionY = top + 12, chordY = top + 38;
+        if (bar.section) {
+          const sw = 14 + bar.section.length * 7.4;
+          out += `<g class="hit" data-chord="${i}"><rect class="f-surf s-ink" x="${bx + 4}" y="${sectionY - 11}" width="${sw}" height="20" rx="4"/><text class="disp f-ink" x="${bx + 4 + sw / 2}" y="${sectionY}" text-anchor="middle" dominant-baseline="middle" font-size="12">${esc(bar.section)}</text></g>`;
         }
-        out += `<rect class="hit" data-chord="${i}" x="${bx + 2}" y="${chordY - 15}" width="${Math.min(w - 4, 110)}" height="24" rx="5" fill="transparent"/>`;
-        if (b.chord) out += `<text class="hit" data-chord="${i}" x="${bx + 10}" y="${chordY}" font-family="var(--font-display)" font-weight="700" font-size="17" fill="var(--ink)">${esc(b.chord).replace(/#/g, "♯").replace(/(?<=[A-G])b/g, "♭")}</text>`;
-        else out += `<text class="hit" data-chord="${i}" x="${bx + 10}" y="${chordY}" font-family="var(--font-body)" font-size="13" fill="var(--muted)" opacity="${isCurBar ? 1 : 0.5}">+ chord</text>`;
-        // Bar number
-        out += `<text x="${bx + 3}" y="${(tabFirst || !showStaff ? tabTop : staffTop) - 6}" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">${i + 1}</text>`;
-
-        // Events
-        let ex = bx + 16;
-        const fill = barFill(b);
-        if (state.cur.bar === i && state.cur.pos === 0 && !state.sel) out += cursorAt(bx + 9, colTop + 6, colBot - 6);
-        b.events.forEach((e, k) => {
-          const ew = evWidth(e), cx = ex + ew / 2;
-          const isSel = state.sel && state.sel.bar === i && state.sel.idx === k;
-          const col = isSel ? "var(--accent)" : "var(--ink)";
-          if (isSel) out += `<rect x="${ex + 1}" y="${colTop + 2}" width="${ew - 2}" height="${colBot - colTop - 4}" rx="6" fill="var(--accent-soft)"/>`;
-          if (showStaff) out += e.type === "note" ? drawNote(e, cx, yOf, bottomStep, col) : drawRest(e, cx, yOf(bottomStep + 4), col);
-          if (e.type === "note") {
-            const ty = yStr(e.string);
-            const label = String(e.fret);
-            const tw = label.length * 7.5 + 4;
-            out += `<rect x="${cx - tw / 2}" y="${ty - 7}" width="${tw}" height="14" fill="var(--paper)"/>`;
-            out += `<text x="${cx}" y="${ty + 0.5}" text-anchor="middle" dominant-baseline="middle" font-family="var(--font-mono)" font-weight="600" font-size="12.5" fill="${e.fret < 0 || e.fret > tuning().maxFret ? "var(--danger)" : col}">${label}</text>`;
-          }
-          if (showTabRhythm) out += drawTabRhythm(e, cx, tabTop + tabH + 6, col);
-          out += `<rect class="hit" data-bar="${i}" data-ev="${k}" x="${ex}" y="${colTop}" width="${ew}" height="${colBot - colTop}" fill="transparent"/>`;
-          ex += ew;
-          if (state.cur.bar === i && state.cur.pos === k + 1 && !state.sel) out += cursorAt(ex - 1, colTop + 6, colBot - 6);
+        out += `<rect class="hit f-none" data-chord="${i}" x="${bx + 2}" y="${chordY - 16}" width="${w - 4}" height="26" rx="5"/>`;
+        const chords = (bar.chord || "").trim().split(/\s+/).filter(Boolean);
+        if (chords.length) chords.forEach((c, k) => {
+          out += `<text class="hit disp f-ink" data-chord="${i}" x="${bx + 10 + k * (w / chords.length)}" y="${chordY}" font-size="17">${prettyChord(c)}</text>`;
         });
-        // Remaining-beats hint inside incomplete bars
-        if (fill < 1 - 1e-9 && b.events.length) {
-          const left = Math.round((1 - fill) * 4 * 100) / 100;
-          out += `<text x="${bx + w - 8}" y="${colBot - 2}" text-anchor="end" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">${left} beat${left === 1 ? "" : "s"} left</text>`;
-        } else if (fill > 1 + 1e-9) {
-          out += `<text x="${bx + w - 8}" y="${colBot - 2}" text-anchor="end" font-family="var(--font-mono)" font-size="9" fill="var(--danger)">too long</text>`;
-        }
-        // Barlines
-        const isLast = i === song.bars.length - 1;
-        const bl = bx + w;
-        if (showStaff) out += `<line x1="${bl}" x2="${bl}" y1="${staffTop}" y2="${staffBot}" stroke="var(--staff)" stroke-width="${isLast ? 1 : 1}"/>`;
-        out += `<line x1="${bl}" x2="${bl}" y1="${tabTop}" y2="${tabTop + tabH}" stroke="var(--staff)"/>`;
+        else if (!state.sel && state.cur.bar === i) out += `<text class="hit body f-mut" data-chord="${i}" x="${bx + 10}" y="${chordY}" font-size="13">+ chord</text>`;
+        out += `<text class="mono f-mut" x="${bx + 3}" y="${sysTop - 8}" font-size="9">${i + 1}</text>`;
       });
-      // "Add bar" affordance at the end of the last row
-      if (ri === rows.length - 1) {
+
+      blocks.forEach(b => {
+        const p = song.parts[b.pi], k = partKind(p);
+        // Part label
+        if (song.parts.length > 1) out += `<text class="mono ${b.active ? "f-acc" : "f-mut"}" x="0" y="${b.top - 10}" font-size="10" font-weight="${b.active ? 600 : 500}">${esc(k.short)}</text>`;
+        if (k.grand) out += `<line class="s-ink" x1="0" x2="0" y1="${b.top}" y2="${b.top + b.h}" stroke-width="2.5"/>`;
+        b.layers.forEach(L => {
+          const lt = b.top + L.y;
+          if (L.type === "staff") {
+            for (let l = 0; l < 5; l++) out += `<line class="s-staff" x1="0" x2="${rowEnd}" y1="${lt + l * G}" y2="${lt + l * G}" stroke-width="1"/>`;
+            out += drawClef(L, lt) + drawKeySig(L, lt, 36);
+            if (ri === 0) out += drawTimeSig(lt, 36 + (nAcc ? nAcc * 8 + 6 : 0) + 2);
+          } else if (L.type === "tab") {
+            const n = p.tuning.length;
+            for (let s = 0; s < n; s++) out += `<line class="s-staff" x1="0" x2="${rowEnd}" y1="${lt + s * T}" y2="${lt + s * T}" stroke-width="1"/>`;
+            ["T", "A", "B"].forEach((c, q) => out += `<text class="disp f-ink" x="12" y="${lt + L.h / 2 - 11 + q * 12}" font-size="12" text-anchor="middle" dominant-baseline="middle">${c}</text>`);
+            p.tuning.forEach((m, s) => out += `<text class="mono f-mut" x="26" y="${lt + s * T}" font-size="9" dominant-baseline="middle">${esc(noteName(m).replace(/\d+$/, ""))}</text>`);
+          }
+          if (L.type !== "rhythm") out += `<line class="s-staff" x1="0" x2="0" y1="${lt}" y2="${lt + L.h}"/>`;
+        });
+
+        r.forEach(({ i, x: bx, w }) => { out += drawBar(b, p, i, bx, w, sp[i]); });
+      });
+
+      // "Add bar"
+      if (ri === rows.length - 1 && rowEnd + 52 < width + 50) {
         const ax = rowEnd + 12;
-        if (ax + 40 < width) out += `<g class="hit" data-addbar="1"><rect x="${ax}" y="${colTop + 8}" width="38" height="${colBot - colTop - 16}" rx="8" fill="transparent" stroke="var(--line)" stroke-dasharray="4 4"/><text x="${ax + 19}" y="${(colTop + colBot) / 2}" text-anchor="middle" dominant-baseline="middle" font-size="20" fill="var(--muted)">+</text></g>`;
+        out += `<g class="hit" data-addbar="1"><rect class="f-none s-line" x="${ax}" y="${sysTop}" width="38" height="${sysBot - sysTop}" rx="8" stroke-dasharray="4 4"/><text class="body f-mut" x="${ax + 19}" y="${(sysTop + sysBot) / 2}" text-anchor="middle" dominant-baseline="middle" font-size="20">+</text></g>`;
       }
     });
 
-    svg.setAttribute("viewBox", `0 0 ${width + 50} ${height}`);
+    svg.setAttribute("viewBox", `0 0 ${width + 50} ${rows.length * rowH + 10}`);
     svg.setAttribute("width", width + 50);
-    svg.setAttribute("height", height);
+    svg.setAttribute("height", rows.length * rowH + 10);
     svg.innerHTML = out;
   }
 
-  function cursorAt(x, y1, y2) {
-    return `<rect x="${x - 1.5}" y="${y1}" width="3" height="${y2 - y1}" rx="1.5" fill="var(--cursor)"><animate attributeName="opacity" values="1;0.35;1" dur="1.2s" repeatCount="indefinite"/></rect>`;
+  function drawClef(L, lt) {
+    const bot = lt + 4 * G;
+    if (L.clef === "treble") return `<text class="music f-ink" x="4" y="${bot - 2}" font-size="42">𝄞</text>` + (L.oct ? `<text class="mono f-ink" x="15" y="${bot + 20}" font-size="10">8</text>` : "");
+    return `<text class="music f-ink" x="4" y="${lt + 27}" font-size="36">𝄢</text>` + (L.oct ? `<text class="mono f-ink" x="12" y="${bot + 18}" font-size="10">8</text>` : "");
+  }
+  function drawKeySig(L, lt, x0) {
+    const f = keyFifths(); if (!f) return "";
+    const bottomStep = L.clef === "treble" ? 30 : 18;
+    const shift = L.clef === "treble" ? 0 : -14;
+    const yOf = s => lt + 4 * G - (s - bottomStep) * G / 2;
+    const list = (f > 0 ? KS_TREBLE_SHARP : KS_TREBLE_FLAT).slice(0, Math.abs(f));
+    return list.map((s, i) => f > 0 ? sharpGlyph(x0 + 4 + i * 8, yOf(s + shift), "ink") : flatGlyph(x0 + 4 + i * 8, yOf(s + shift), "ink")).join("");
+  }
+  function drawTimeSig(lt, x) {
+    const { num, den } = timeSig();
+    return `<text class="disp f-ink" x="${x + 8}" y="${lt + 2 * G - 1}" font-size="19" text-anchor="middle">${num}</text><text class="disp f-ink" x="${x + 8}" y="${lt + 4 * G - 1}" font-size="19" text-anchor="middle">${den}</text>`;
   }
 
-  function drawNote(e, x, yOf, bottomStep, col) {
-    const step = staffStep(e.midi), y = yOf(step);
+  function drawBar(b, p, bi, bx, w, spc) {
+    const events = p.bars[bi];
+    const cap = barCap();
+    const fill = fillOf(events);
+    const isCurBar = b.active && !state.sel && state.cur.bar === bi;
+    const top = b.top - 8, bot = b.top + b.h + 8;
+    const X = t => bx + spc.pos.get(tk(t));
     let s = "";
-    // Ledger lines
-    for (let l = bottomStep - 2; l >= step; l -= 2) s += `<line x1="${x - 9}" x2="${x + 9}" y1="${yOf(l)}" y2="${yOf(l)}" stroke="var(--staff)" stroke-width="1.2"/>`;
-    for (let l = bottomStep + 10; l <= step; l += 2) s += `<line x1="${x - 9}" x2="${x + 9}" y1="${yOf(l)}" y2="${yOf(l)}" stroke="var(--staff)" stroke-width="1.2"/>`;
-    const pc = (((e.midi + 12) % 12) + 12) % 12;
-    if (SHARP[pc]) s += sharpGlyph(x - 15, y, col);
+    // background hit target
+    s += `<rect class="hit ${isCurBar ? "f-soft" : "f-none"}" data-part="${b.pi}" data-bar="${bi}" x="${bx}" y="${top}" width="${w}" height="${bot - top}" opacity="${isCurBar ? 0.6 : 1}"/>`;
+
+    // items with onset times
+    let t = 0;
+    const items = events.map((ev, k) => { const it = { t, ev, k, x: X(t) }; t += evLen(ev); return it; });
+    // selection highlight
+    items.forEach((it, k) => {
+      if (b.active && state.sel && state.sel.bar === bi && state.sel.idx === k) {
+        const nx = k + 1 < items.length ? items[k + 1].x : X(fill);
+        s += `<rect id="selMark" class="f-soft" x="${it.x - 13}" y="${top + 2}" width="${Math.max(24, nx - it.x)}" height="${bot - top - 4}" rx="6"/>`;
+      }
+    });
+
+    b.layers.forEach(L => {
+      const lt = b.top + L.y;
+      if (L.type === "staff") s += staffLayer(items, L, lt, b.active, bi, bx, w, !events.length);
+      else if (L.type === "tab") s += tabLayer(items, p, lt, b.active, bi);
+      else if (L.type === "rhythm") s += rhythmLayer(items, lt, b.active, bi);
+      // barline
+      const bl = bx + w;
+      const last = bi === song.bars.length - 1;
+      if (L.type !== "rhythm") {
+        s += `<line class="s-staff" x1="${bl}" x2="${bl}" y1="${lt}" y2="${lt + L.h}" stroke-width="1"/>`;
+        if (last) s += `<line class="s-ink" x1="${bl + 4}" x2="${bl + 4}" y1="${lt}" y2="${lt + L.h}" stroke-width="3"/>`;
+      }
+    });
+
+    // event hit targets
+    items.forEach((it, k) => {
+      const nx = k + 1 < items.length ? items[k + 1].x : Math.max(X(fill), it.x + 24);
+      s += `<rect class="hit f-none" data-part="${b.pi}" data-bar="${bi}" data-ev="${k}" x="${it.x - 13}" y="${top}" width="${Math.max(24, nx - it.x)}" height="${bot - top}"/>`;
+    });
+
+    // cursor
+    if (isCurBar) {
+      const pos = state.cur.pos;
+      const cx = pos < items.length ? items[pos].x - 13 : (events.length ? X(fill) - 13 : bx + 12);
+      s += `<rect id="cursorMark" class="f-cur blink" x="${cx - 1.5}" y="${top + 4}" width="3" height="${bot - top - 8}" rx="1.5"/>`;
+    }
+    // fill hint
+    if (b.active && events.length) {
+      const den = timeSig().den;
+      if (fill < cap - 1e-9) {
+        const left = Math.round((cap - fill) * den * 100) / 100;
+        s += `<text class="mono f-mut" x="${bx + w - 6}" y="${bot + 4}" text-anchor="end" font-size="9">${left} ${den === 8 ? "eighth" : "beat"}${left === 1 ? "" : "s"} left</text>`;
+      } else if (fill > cap + 1e-9) s += `<text class="mono f-dan" x="${bx + w - 6}" y="${bot + 4}" text-anchor="end" font-size="9">too long</text>`;
+    }
+    return s;
+  }
+
+  // ---------- Staff layer ----------
+  function staffLayer(items, L, lt, active, bi, bx, w, emptyBar) {
+    const bottomStep = L.clef === "treble" ? 30 : 18, mid = bottomStep + 4;
+    const yOf = st => lt + 4 * G - (st - bottomStep) * G / 2;
+    const ka = keyAlters(); const accState = {};
+    let s = "";
+    if (emptyBar) { // whole-measure rest
+      const cx = bx + w / 2;
+      return `<rect class="f-ink" x="${cx - 7}" y="${lt + G}" width="14" height="${G / 2}" opacity="${active ? 0.35 : 0.9}"/>`;
+    }
+    const its = items.map(it => {
+      const o = { ...it, nn: [] };
+      if (it.ev.type === "note") {
+        it.ev.notes.slice().sort((a, b) => a.midi - b.midi).forEach(n => {
+          if (L.filter && !L.filter(n.midi)) return;
+          const sp = spell(n.midi);
+          const step = (sp.oct + L.oct) * 7 + sp.letter;
+          const key = sp.letter + "_" + sp.oct;
+          const cur = key in accState ? accState[key] : ka[sp.letter];
+          let acc = null;
+          if (sp.alter !== cur) { acc = sp.alter; accState[key] = sp.alter; }
+          o.nn.push({ step, acc });
+        });
+      }
+      return o;
+    });
+    const isSel = k => active && state.sel && state.sel.bar === bi && state.sel.idx === k;
+    // Beams
+    const groups = beamGroups(its, it => it.nn.length > 0);
+    const beamOf = new Map();
+    groups.forEach(g => {
+      let sum = 0; g.forEach(it => { const lo = it.nn[0].step, hi = it.nn[it.nn.length - 1].step; sum += (lo + hi) / 2 - mid; });
+      const dir = sum >= 0 ? "down" : "up";
+      const want = it => dir === "up" ? yOf(it.nn[it.nn.length - 1].step) - 3.25 * G : yOf(it.nn[0].step) + 3.25 * G;
+      const sx = it => it.x + (dir === "up" ? 5.1 : -5.1);
+      const a = g[0], z = g[g.length - 1];
+      let dy = want(z) - want(a); dy = Math.max(-G, Math.min(G, dy));
+      const slope = (sx(z) - sx(a)) ? dy / (sx(z) - sx(a)) : 0;
+      let base = want(a);
+      g.forEach(it => {
+        const ly = base + slope * (sx(it) - sx(a));
+        if (dir === "up" && ly > want(it)) base -= ly - want(it);
+        if (dir === "down" && ly < want(it)) base += want(it) - ly;
+      });
+      const line = x => base + slope * (x - sx(a));
+      g.forEach(it => beamOf.set(it.k, { dir, y: line(sx(it)) }));
+      // draw beams
+      const col = g.some(it => isSel(it.k)) ? "acc" : "ink";
+      const th = 4.4, off = dir === "up" ? 0 : -th;
+      const beamPoly = (x1, x2, d) => {
+        const y1 = line(x1) + off + (dir === "up" ? d : -d), y2 = line(x2) + off + (dir === "up" ? d : -d);
+        return `<polygon class="f-${col}" points="${x1},${y1} ${x2},${y2} ${x2},${y2 + th} ${x1},${y1 + th}"/>`;
+      };
+      g._draw = () => {
+        let o = beamPoly(sx(a), sx(z), 0);
+        g.forEach((it, j) => {
+          if (it.ev.dur !== 16) return;
+          const nb = g[j + 1], pb = g[j - 1];
+          if (nb && nb.ev.dur === 16) o += beamPoly(sx(it), sx(nb), 7);
+          else if (!(pb && pb.ev.dur === 16)) o += j < g.length - 1 ? beamPoly(sx(it), sx(it) + 9, 7) : beamPoly(sx(it) - 9, sx(it), 7);
+        });
+        return o;
+      };
+    });
+    its.forEach(it => {
+      const col = isSel(it.k) ? "acc" : "ink";
+      if (it.ev.type === "rest") s += drawRest(it.ev, it.x, yOf(mid), col);
+      else if (it.nn.length) s += drawChord(it, yOf, bottomStep, col, beamOf.get(it.k));
+    });
+    groups.forEach(g => s += g._draw());
+    return s;
+  }
+
+  function beamGroups(items, hasNotes) {
+    const gl = beamGroupLen(), groups = []; let cur = [];
+    const flush = () => { if (cur.length >= 2) groups.push(cur); cur = []; };
+    items.forEach(it => {
+      const len = evLen(it.ev);
+      const beamable = it.ev.type === "note" && hasNotes(it) && it.ev.dur >= 8;
+      const gid = Math.floor(it.t / gl + 1e-6), egid = Math.floor((it.t + len) / gl - 1e-6);
+      if (!beamable || gid !== egid) { flush(); return; }
+      if (cur.length && cur.gid !== gid) flush();
+      if (!cur.length) cur.gid = gid;
+      cur.push(it);
+    });
+    flush();
+    return groups;
+  }
+
+  function drawChord(it, yOf, bottomStep, col, beam) {
+    const e = it.ev, x = it.x, ns = it.nn;
+    const lo = ns[0].step, hi = ns[ns.length - 1].step, mid = bottomStep + 4;
+    const dir = beam ? beam.dir : ((lo + hi) / 2 >= mid ? "down" : "up");
+    let s = "";
+    // displaced heads for seconds
+    const disp = new Set();
+    if (dir === "up") { for (let i = 1; i < ns.length; i++) if (ns[i].step - ns[i - 1].step === 1 && !disp.has(i - 1)) disp.add(i); }
+    else { for (let i = ns.length - 2; i >= 0; i--) if (ns[i + 1].step - ns[i].step === 1 && !disp.has(i + 1)) disp.add(i); }
+    const hx = i => disp.has(i) ? (dir === "up" ? x + 10.2 : x - 10.2) : x;
+    // ledger lines
+    const ledger = l => `<line class="s-staff" x1="${x - 9 - (dir === "down" && disp.size ? 10 : 0)}" x2="${x + 9 + (dir === "up" && disp.size ? 10 : 0)}" y1="${yOf(l)}" y2="${yOf(l)}" stroke-width="1.2"/>`;
+    for (let l = bottomStep - 2; l >= lo; l -= 2) s += ledger(l);
+    for (let l = bottomStep + 10; l <= hi; l += 2) s += ledger(l);
+    // accidentals
+    let column = 0, last = null;
+    const leftShift = dir === "down" && disp.size ? 10 : 0;
+    ns.map((n, i) => ({ n, i })).filter(o => o.n.acc !== null).sort((a, b) => b.n.step - a.n.step).forEach(o => {
+      if (last !== null && last - o.n.step < 6) column++; else column = 0;
+      last = o.n.step;
+      const ax = x - 14 - leftShift - column * 8, ay = yOf(o.n.step);
+      s += o.n.acc > 0 ? sharpGlyph(ax, ay, col) : o.n.acc < 0 ? flatGlyph(ax, ay, col) : naturalGlyph(ax, ay, col);
+    });
+    // heads
     const hollow = e.dur <= 2;
-    s += `<ellipse cx="${x}" cy="${y}" rx="5.4" ry="3.9" transform="rotate(-20 ${x} ${y})" fill="${hollow ? "var(--paper)" : col}" stroke="${col}" stroke-width="${hollow ? 1.7 : 0.6}"/>`;
+    ns.forEach((n, i) => {
+      const cx = hx(i), cy = yOf(n.step);
+      s += `<ellipse class="${hollow ? "f-paper" : "f-" + col} s-${col}" cx="${cx}" cy="${cy}" rx="5.4" ry="3.9" transform="rotate(-20 ${cx} ${cy})" stroke-width="${hollow ? 1.7 : 0.6}"/>`;
+    });
+    // stem + flags
     if (e.dur >= 2) {
-      const up = step < bottomStep + 4;
-      const sx = up ? x + 4.9 : x - 4.9;
-      const sy2 = up ? y - 3.6 * G : y + 3.6 * G;
-      s += `<line x1="${sx}" x2="${sx}" y1="${y + (up ? -1 : 1)}" y2="${sy2}" stroke="${col}" stroke-width="1.4"/>`;
-      const flags = e.dur === 8 ? 1 : e.dur === 16 ? 2 : 0;
-      for (let f = 0; f < flags; f++) {
-        const fy = sy2 + (up ? f * 6 : -f * 6);
-        s += up ? `<path d="M${sx},${fy} c1,5 9,7 7,15" fill="none" stroke="${col}" stroke-width="1.6"/>`
-                : `<path d="M${sx},${fy} c1,-5 9,-7 7,-15" fill="none" stroke="${col}" stroke-width="1.6"/>`;
+      const sx = dir === "up" ? x + 5.1 : x - 5.1;
+      const y1 = dir === "up" ? yOf(lo) : yOf(hi);
+      const y2 = beam ? beam.y : (dir === "up" ? yOf(hi) - 3.5 * G : yOf(lo) + 3.5 * G);
+      s += `<line class="s-${col}" x1="${sx}" x2="${sx}" y1="${y1}" y2="${y2}" stroke-width="1.4"/>`;
+      if (!beam) {
+        const flags = e.dur === 8 ? 1 : e.dur === 16 ? 2 : 0;
+        for (let f = 0; f < flags; f++) {
+          const fy = y2 + (dir === "up" ? f * 6 : -f * 6);
+          s += dir === "up" ? `<path class="s-${col}" d="M${sx},${fy} c1,5 9,7 7,15" fill="none" stroke-width="1.6"/>`
+                            : `<path class="s-${col}" d="M${sx},${fy} c1,-5 9,-7 7,-15" fill="none" stroke-width="1.6"/>`;
+        }
       }
     }
-    if (e.dot) { const onLine = (step - bottomStep) % 2 === 0; s += `<circle cx="${x + 9}" cy="${onLine ? y - G / 2 : y}" r="1.7" fill="${col}"/>`; }
+    // dots
+    if (e.dot) ns.forEach((n, i) => {
+      const onLine = (n.step - bottomStep) % 2 === 0;
+      const dx = Math.max(x, hx(i)) + 9;
+      s += `<circle class="f-${col}" cx="${dx}" cy="${onLine ? yOf(n.step) - G / 2 : yOf(n.step)}" r="1.7"/>`;
+    });
     return s;
   }
   function sharpGlyph(x, y, col) {
-    return `<g stroke="${col}" fill="none"><line x1="${x - 1.6}" x2="${x - 1.6}" y1="${y - 8}" y2="${y + 7}" stroke-width="1"/><line x1="${x + 1.8}" x2="${x + 1.8}" y1="${y - 9}" y2="${y + 6}" stroke-width="1"/><line x1="${x - 4}" x2="${x + 4}" y1="${y - 1.8}" y2="${y - 3.8}" stroke-width="2.2"/><line x1="${x - 4}" x2="${x + 4}" y1="${y + 3.2}" y2="${y + 1.2}" stroke-width="2.2"/></g>`;
+    return `<g class="s-${col}" fill="none"><line x1="${x - 1.6}" x2="${x - 1.6}" y1="${y - 8}" y2="${y + 7}" stroke-width="1"/><line x1="${x + 1.8}" x2="${x + 1.8}" y1="${y - 9}" y2="${y + 6}" stroke-width="1"/><line x1="${x - 4}" x2="${x + 4}" y1="${y - 1.8}" y2="${y - 3.8}" stroke-width="2.2"/><line x1="${x - 4}" x2="${x + 4}" y1="${y + 3.2}" y2="${y + 1.2}" stroke-width="2.2"/></g>`;
+  }
+  function flatGlyph(x, y, col) {
+    return `<g class="s-${col}" fill="none"><line x1="${x - 2.5}" x2="${x - 2.5}" y1="${y - 11}" y2="${y + 4}" stroke-width="1.2"/><path d="M${x - 2.5},${y + 4} c4,-2 7,-5 5,-7.5 c-1.5,-1.8 -4,-0.5 -5,1" stroke-width="1.6"/></g>`;
+  }
+  function naturalGlyph(x, y, col) {
+    return `<g class="s-${col}" fill="none"><line x1="${x - 2.5}" x2="${x - 2.5}" y1="${y - 9}" y2="${y + 4}" stroke-width="1"/><line x1="${x + 2.5}" x2="${x + 2.5}" y1="${y - 4}" y2="${y + 9}" stroke-width="1"/><line x1="${x - 2.5}" x2="${x + 2.5}" y1="${y - 2}" y2="${y - 3.5}" stroke-width="2.2"/><line x1="${x - 2.5}" x2="${x + 2.5}" y1="${y + 3.5}" y2="${y + 2}" stroke-width="2.2"/></g>`;
   }
   function drawRest(e, x, mid, col) {
     let s = "";
-    if (e.dur === 1) s = `<rect x="${x - 6}" y="${mid - G}" width="12" height="${G / 2}" fill="${col}"/>`;
-    else if (e.dur === 2) s = `<rect x="${x - 6}" y="${mid - G / 2}" width="12" height="${G / 2}" fill="${col}"/>`;
-    else if (e.dur === 4) s = `<path d="M${x - 2},${mid - 13} l5,6 l-4,5 l5,6 c-5,-2 -7,1 -3,6 c-7,-3 -6,-8 0,-7 l-5,-6 l4,-5 z" fill="${col}" stroke="${col}" stroke-width="1" stroke-linejoin="round"/>`;
+    if (e.dur === 1) s = `<rect class="f-${col}" x="${x - 6}" y="${mid - G}" width="12" height="${G / 2}"/>`;
+    else if (e.dur === 2) s = `<rect class="f-${col}" x="${x - 6}" y="${mid - G / 2}" width="12" height="${G / 2}"/>`;
+    else if (e.dur === 4) s = `<path class="f-${col} s-${col}" d="M${x - 2},${mid - 13} l5,6 l-4,5 l5,6 c-5,-2 -7,1 -3,6 c-7,-3 -6,-8 0,-7 l-5,-6 l4,-5 z" stroke-width="1" stroke-linejoin="round"/>`;
     else {
       const n = e.dur === 8 ? 1 : 2;
       for (let k = 0; k < n; k++) {
-        const oy = k * 7;
-        s += `<circle cx="${x - 3 + (n === 2 ? -k * 2 : 0)}" cy="${mid - 5 + oy}" r="2.3" fill="${col}"/><path d="M${x - 3 + (n === 2 ? -k * 2 : 0)},${mid - 3.5 + oy} c3,1 5,0 6,-3" fill="none" stroke="${col}" stroke-width="1.4"/>`;
+        const oy = k * 7, ox = x - 3 - k * 2;
+        s += `<circle class="f-${col}" cx="${ox}" cy="${mid - 5 + oy}" r="2.3"/><path class="s-${col}" d="M${ox},${mid - 3.5 + oy} c3,1 5,0 6,-3" fill="none" stroke-width="1.4"/>`;
       }
-      s += `<line x1="${x + 3}" x2="${x - 2}" y1="${mid - 8.5}" y2="${mid + 10}" stroke="${col}" stroke-width="1.5"/>`;
+      s += `<line class="s-${col}" x1="${x + 3}" x2="${x - 2}" y1="${mid - 8.5}" y2="${mid + 10}" stroke-width="1.5"/>`;
     }
-    if (e.dot) s += `<circle cx="${x + 10}" cy="${mid - G / 2}" r="1.7" fill="${col}"/>`;
-    return s;
-  }
-  function drawTabRhythm(e, x, y, col) {
-    if (e.type === "rest") return `<text x="${x}" y="${y + 13}" text-anchor="middle" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">rest</text>`;
-    if (e.dur === 1) return "";
-    const len = e.dur === 2 ? 9 : 16;
-    let s = `<line x1="${x}" x2="${x}" y1="${y}" y2="${y + len}" stroke="${col}" stroke-width="1.4"/>`;
-    const flags = e.dur === 8 ? 1 : e.dur === 16 ? 2 : 0;
-    for (let f = 0; f < flags; f++) s += `<path d="M${x},${y + len - f * 5} c1,-3 6,-4 6,-9" fill="none" stroke="${col}" stroke-width="1.5"/>`;
-    if (e.dot) s += `<circle cx="${x + 5}" cy="${y + len - 2}" r="1.5" fill="${col}"/>`;
+    if (e.dot) s += `<circle class="f-${col}" cx="${x + 10}" cy="${mid - G / 2}" r="1.7"/>`;
     return s;
   }
 
+  // ---------- Tab layer ----------
+  function tabLayer(items, p, lt, active, bi) {
+    let s = "";
+    items.forEach(it => {
+      if (it.ev.type !== "note") return;
+      const col = active && state.sel && state.sel.bar === bi && state.sel.idx === it.k ? "acc" : "ink";
+      it.ev.notes.forEach(n => {
+        if (!n.string) return;
+        const ty = lt + (n.string - 1) * T, label = String(n.fret), tw = label.length * 7.5 + 4;
+        const bad = n.fret < 0 || n.fret > maxFret(p);
+        s += `<rect class="f-paper" x="${it.x - tw / 2}" y="${ty - 7}" width="${tw}" height="14"/>`;
+        s += `<text class="mono ${bad ? "f-dan" : "f-" + col}" x="${it.x}" y="${ty + 0.5}" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12.5">${label}</text>`;
+      });
+    });
+    return s;
+  }
+  // ---------- Rhythm row (tab-only view) ----------
+  function rhythmLayer(items, lt, active, bi) {
+    let s = "";
+    const top = lt + 2, len = 16, by = top + len;
+    const groups = beamGroups(items, () => true);
+    const inGroup = new Set(); groups.forEach(g => g.forEach(it => inGroup.add(it.k)));
+    items.forEach(it => {
+      const col = active && state.sel && state.sel.bar === bi && state.sel.idx === it.k ? "acc" : "ink";
+      const e = it.ev, x = it.x;
+      if (e.type === "rest") { s += `<text class="mono f-mut" x="${x}" y="${top + 12}" text-anchor="middle" font-size="9">rest</text>`; return; }
+      if (e.dur === 1) return;
+      s += `<line class="s-${col}" x1="${x}" x2="${x}" y1="${top}" y2="${top + (e.dur === 2 ? 9 : len)}" stroke-width="1.4"/>`;
+      if (!inGroup.has(it.k)) {
+        const flags = e.dur === 8 ? 1 : e.dur === 16 ? 2 : 0;
+        for (let f = 0; f < flags; f++) s += `<path class="s-${col}" d="M${x},${by - f * 5} c1,-3 6,-4 6,-9" fill="none" stroke-width="1.5"/>`;
+      }
+      if (e.dot) s += `<circle class="f-${col}" cx="${x + 5}" cy="${by - 2}" r="1.5"/>`;
+    });
+    groups.forEach(g => {
+      const a = g[0], z = g[g.length - 1];
+      s += `<rect class="f-ink" x="${a.x}" y="${by - 3.5}" width="${z.x - a.x}" height="3.5"/>`;
+      g.forEach((it, j) => {
+        if (it.ev.dur !== 16) return;
+        const nb = g[j + 1], pb = g[j - 1];
+        if (nb && nb.ev.dur === 16) s += `<rect class="f-ink" x="${it.x}" y="${by - 9}" width="${nb.x - it.x}" height="3.5"/>`;
+        else if (!(pb && pb.ev.dur === 16)) s += `<rect class="f-ink" x="${j < g.length - 1 ? it.x : it.x - 8}" y="${by - 9}" width="8" height="3.5"/>`;
+      });
+    });
+    return s;
+  }
+
+  // ---------- Status ----------
   function renderStatus() {
     const el = document.getElementById("status");
     const bi = state.sel ? state.sel.bar : state.cur.bar;
-    const b = song.bars[bi];
-    const fill = barFill(b);
-    const beats = Math.round(fill * 4 * 100) / 100;
+    const evs = P().bars[bi] || [];
+    const { num, den } = timeSig();
+    const fill = fillOf(evs), cap = barCap();
+    const beats = Math.round(fill * den * 100) / 100;
     const sel = selected();
     let what;
-    if (sel) what = sel.type === "note" ? `Selected <b>${noteName(sel.midi)}</b> · string ${sel.string}, fret ${sel.fret}` : `Selected <b>rest</b>`;
-    else what = `Cursor in bar <b>${bi + 1}</b>`;
-    const fullPill = eq(fill, 1) ? `<span class="pill">bar full</span>` : fill > 1 ? `<span class="pill warn">bar too long</span>` : "";
+    if (sel) what = sel.type === "note" ? `Selected <b>${sel.notes.map(n => noteName(n.midi)).join(" ")}</b>${sel.notes.length === 1 && sel.notes[0].string ? ` · string ${sel.notes[0].string}, fret ${sel.notes[0].fret}` : ""}` : "Selected <b>rest</b>";
+    else what = `${esc(P().name)} · bar <b>${bi + 1}</b>`;
+    const pill = eq(fill, cap) ? `<span class="pill">bar full</span>` : fill > cap ? `<span class="pill warn">bar too long</span>` : "";
+    const viewSeg = song.parts.length > 1 ? `<div class="seg small" role="group" aria-label="Show"><button id="viewAll" aria-pressed="${state.view === "all"}">All parts</button><button id="viewOne" aria-pressed="${state.view === "part"}">This part</button></div>` : "";
     const hide = state.mode === "tab" ? `<label class="view-toggle"><input type="checkbox" id="showNotation" ${state.showNotation ? "checked" : ""}> Show notation</label>` : "";
-    el.innerHTML = `<span>${what}</span><span><b>${beats}</b> of 4 beats</span>${fullPill}<span>${song.bars.length} bars</span>${hide}`;
+    el.innerHTML = `<span>${what}</span><span><b>${beats}</b> of ${num} ${den === 8 ? "eighths" : "beats"}</span>${pill}<span>${song.bars.length} bars</span><span class="view-group">${hide}${viewSeg}</span>`;
     const cb = document.getElementById("showNotation");
     if (cb) cb.addEventListener("change", () => { state.showNotation = cb.checked; render(); });
+    const va = document.getElementById("viewAll"), vo = document.getElementById("viewOne");
+    if (va) { va.onclick = () => { state.view = "all"; render(); }; vo.onclick = () => { state.view = "part"; render(); }; }
   }
 
-  // ---------------- Toolbar & pads ----------------
+  // ================= Parts row =================
+  const partsEl = document.getElementById("parts");
+  function renderParts() {
+    partsEl.innerHTML = song.parts.map((p, i) => {
+      const k = partKind(p);
+      const tun = k.fretted ? tuningLabel(p) : "";
+      return `<button class="chip" data-part="${i}" aria-pressed="${i === state.part}">${esc(p.name)}${tun ? `<small>${esc(tun)}</small>` : ""}</button>`;
+    }).join("") + `<button class="chip ghost" id="partSettings">Part settings</button><button class="chip ghost" id="addPart">+ Add part</button>`;
+  }
+  function tuningLabel(p) {
+    const pre = PRESETS[partKind(p).presets].find(x => x.open.join() === p.tuning.join());
+    return pre ? (pre.name === "Standard" || pre.name === "4-string" ? "" : pre.name) : p.tuning.slice().reverse().map(m => noteName(m).replace(/\d+$/, "")).join("");
+  }
+  partsEl.addEventListener("click", e => {
+    const c = e.target.closest("[data-part]");
+    if (c) return setActivePart(+c.dataset.part);
+    if (e.target.closest("#partSettings")) return openPartSettings();
+    if (e.target.closest("#addPart")) return openAddPart();
+  });
+
+  // ================= Toolbar & pads =================
   const DUR_ICONS = {
     1: `<svg viewBox="0 0 22 26" aria-hidden="true"><ellipse cx="11" cy="17" rx="6" ry="4.2" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>`,
     2: `<svg viewBox="0 0 22 26" aria-hidden="true"><ellipse cx="9" cy="20" rx="5.2" ry="3.7" transform="rotate(-20 9 20)" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="13.8" x2="13.8" y1="19" y2="2" stroke="currentColor" stroke-width="1.6"/></svg>`,
@@ -652,46 +1155,50 @@ pre.code {
   function renderToolbar() {
     durGroup.querySelectorAll("[data-dur]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.dur === state.dur)));
     document.getElementById("dotBtn").setAttribute("aria-pressed", String(state.dot));
+    document.getElementById("chordBtn").setAttribute("aria-pressed", String(state.chord));
   }
 
   const pad = document.getElementById("pad");
   function renderPad() {
-    const t = tuning();
-    if (state.mode === "notation") {
+    const p = P();
+    const sel = selected();
+    const held = new Set(sel && sel.type === "note" ? sel.notes.map(n => n.midi) : []);
+    if (state.mode === "notation" || !partKind(p).fretted) {
       const start = state.kbStart;
       const whites = [], blacks = [];
-      for (let m = start; m < start + 24; m++) { (SHARP[m % 12] ? blacks : whites).push(m); }
+      for (let m = start; m < start + 24; m++) (SH[m % 12][1] ? blacks : whites).push(m);
       whites.push(start + 24);
       const wN = whites.length;
-      let keysHTML = whites.map(m => `<button class="wkey" data-midi="${m}" aria-label="${noteName(m)}">${m % 12 === 0 ? noteName(m) : ""}</button>`).join("");
+      let keysHTML = whites.map(m => `<button class="wkey${held.has(m) ? " down" : ""}" data-midi="${m}" aria-label="${noteName(m)}">${m % 12 === 0 ? "C" + (m / 12 - 1) : ""}</button>`).join("");
       blacks.forEach(m => {
         const wi = whites.indexOf(m - 1);
         const left = ((wi + 1) / wN) * 100;
-        keysHTML += `<button class="bkey" data-midi="${m}" aria-label="${noteName(m)}" style="left:calc(${left}% - ${(100 / wN) * 0.32}%);width:${(100 / wN) * 0.64}%"></button>`;
+        keysHTML += `<button class="bkey${held.has(m) ? " down" : ""}" data-midi="${m}" aria-label="${noteName(m)}" style="left:calc(${left}% - ${(100 / wN) * 0.32}%);width:${(100 / wN) * 0.64}%"></button>`;
       });
       pad.innerHTML = `<div class="pad-side">
           <button class="tool" id="octUp" aria-label="Octave up">▲</button>
-          <span class="range">${noteName(start)}</span>
+          <span class="range">C${start / 12 - 1}</span>
           <button class="tool" id="octDown" aria-label="Octave down">▼</button>
         </div>
         <div class="keys" id="keys">${keysHTML}</div>`;
       document.getElementById("octUp").onclick = () => { if (state.kbStart < 72) { state.kbStart += 12; renderPad(); } };
-      document.getElementById("octDown").onclick = () => { if (state.kbStart > 24) { state.kbStart -= 12; renderPad(); } };
-      const keys = document.getElementById("keys");
-      keys.addEventListener("pointerdown", ev => {
+      document.getElementById("octDown").onclick = () => { if (state.kbStart > 12) { state.kbStart -= 12; renderPad(); } };
+      document.getElementById("keys").addEventListener("pointerdown", ev => {
         const k = ev.target.closest("[data-midi]"); if (!k) return;
-        ev.preventDefault(); k.classList.add("down"); setTimeout(() => k.classList.remove("down"), 160);
-        enterPitch(+k.dataset.midi);
+        ev.preventDefault(); enterPitch(+k.dataset.midi);
       });
     } else {
-      const strings = t.labels.map((lab, i) => `<button data-string="${i + 1}" aria-pressed="${state.tabString === i + 1}" aria-label="String ${i + 1} (${lab})">${lab} string</button>`).join("");
+      const heldStrings = new Map(sel && sel.type === "note" ? sel.notes.map(n => [n.string, n.fret]) : []);
+      const strings = p.tuning.map((m, i) => `<button data-string="${i + 1}" aria-pressed="${state.tabString === i + 1}" aria-label="String ${i + 1}">${esc(noteName(m).replace(/\d+$/, ""))}${heldStrings.has(i + 1) ? ` · ${heldStrings.get(i + 1)}` : ""}</button>`).join("");
       let frets = "";
-      for (let f = 0; f <= 23; f++) frets += `<button data-fret="${f}" class="${[3, 5, 7, 9, 12, 15, 17, 19, 21].includes(f) ? "marker" : ""}" ${f > t.maxFret ? "disabled style=opacity:.35" : ""}>${f}</button>`;
+      const mf = maxFret(p);
+      for (let f = 0; f <= 23; f++) frets += `<button data-fret="${f}" class="${[3, 5, 7, 9, 12, 15, 17, 19, 21].includes(f) ? "marker" : ""}" ${f > mf ? "disabled style=\"opacity:.35\"" : ""}>${f}</button>`;
       pad.innerHTML = `<div class="tabpad"><div class="strings" id="strings">${strings}</div><div class="frets" id="frets">${frets}</div></div>`;
       document.getElementById("strings").addEventListener("click", e => {
         const b = e.target.closest("[data-string]"); if (!b) return;
-        const s = +b.dataset.string; const sel = selected();
-        if (sel && sel.type === "note") changeString(s - sel.string); else { state.tabString = s; renderPad(); }
+        const s = +b.dataset.string; const sl = selected();
+        if (sl && sl.type === "note" && sl.notes.length === 1 && !state.chord) changeString(s - sl.notes[0].string);
+        else { state.tabString = s; renderPad(); }
       });
       document.getElementById("frets").addEventListener("pointerdown", e => {
         const b = e.target.closest("[data-fret]"); if (!b || b.disabled) return;
@@ -699,102 +1206,246 @@ pre.code {
       });
     }
   }
-  function enterFret(f) {
-    const s = state.tabString; const midi = tuning().open[s - 1] + f;
-    enterPitch(midi, s);
-  }
+  function enterFret(f) { const p = P(); const s = state.tabString; enterPitch(p.tuning[s - 1] + f, s); }
 
-  // ---------------- Score interaction ----------------
+  // ================= Score interaction =================
   svg.addEventListener("click", e => {
     const el = e.target.closest("[data-addbar],[data-chord],[data-ev],[data-bar]");
     if (!el) return;
-    if (el.dataset.addbar) { pushUndo(); song.bars.push(newBar()); state.sel = null; state.cur = { bar: song.bars.length - 1, pos: 0 }; commit(); return; }
+    if (el.dataset.addbar) { pushUndo(); addBar(); state.sel = null; state.cur = { bar: song.bars.length - 1, pos: 0 }; commit(); return; }
     if (el.dataset.chord !== undefined) { openChordSheet(+el.dataset.chord); return; }
-    const bar = +el.dataset.bar;
+    const pi = +el.dataset.part, bar = +el.dataset.bar;
+    if (pi !== state.part) setActivePart(pi);
     if (el.dataset.ev !== undefined) {
       const idx = +el.dataset.ev;
       if (state.sel && state.sel.bar === bar && state.sel.idx === idx) { state.sel = null; state.cur = { bar, pos: idx + 1 }; }
-      else { state.sel = { bar, idx }; const ev = song.bars[bar].events[idx]; if (ev.type === "note") blip(ev.midi); }
-    } else { state.sel = null; state.cur = { bar, pos: song.bars[bar].events.length }; }
+      else { state.sel = { part: pi, bar, idx }; const ev = P().bars[bar][idx]; if (ev.type === "note") blip(ev.notes.map(n => n.midi)); }
+    } else { state.sel = null; state.cur = { bar, pos: P().bars[bar].length }; }
     syncFromSelection(); render();
   });
 
-  // ---------------- Chord / section sheet ----------------
+  // ================= Sheets =================
   const host = document.getElementById("sheetHost");
+  function overlay(html) {
+    host.innerHTML = `<div class="overlay" id="ov"><div class="panel" role="dialog" aria-modal="true">${html}</div></div>`;
+    return document.getElementById("ov");
+  }
+  function closeSheet() { host.innerHTML = ""; }
+
+  function diatonicChords() {
+    const k = song.key, minor = /m$/.test(k);
+    const tonicName = k.replace(/m$/, "");
+    const tonic = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[tonicName[0]] + (tonicName[1] === "#" ? 1 : tonicName[1] === "b" ? -1 : 0);
+    const steps = minor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11];
+    const quals = minor ? ["m", "dim", "", "m", "m", "", ""] : ["", "m", "m", "", "", "m", "dim"];
+    const out = steps.map((st, i) => pcName(tonic + st) + quals[i]);
+    out.push(pcName(tonic + 7) + "7");
+    if (minor) out.push(pcName(tonic + 7));
+    else out.push(pcName(tonic + 2) + "7", pcName(tonic + 5) + "sus4");
+    return out;
+  }
+
   function openChordSheet(i) {
     const b = song.bars[i];
-    const chordChips = ["G", "C", "D", "Em", "Am", "F", "A", "E", "Bm", "D7", "G7", "Cmaj7", "Dsus4", "G/B"];
     const secChips = ["Intro", "Verse", "Pre-Chorus", "Chorus", "Bridge", "Solo", "Outro"];
-    host.innerHTML = `<div class="overlay" id="ov"><div class="panel" role="dialog" aria-modal="true" aria-labelledby="chTitle">
-      <h2 id="chTitle">Bar ${i + 1}</h2>
-      <div class="field"><label for="chordIn">Chord</label><input id="chordIn" value="${esc(b.chord)}" placeholder="e.g. Em7, F#m, G/B" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
-      <div class="chips" id="chordChips">${chordChips.map(c => `<button data-v="${c}">${c}</button>`).join("")}</div>
+    const ov = overlay(`
+      <h2>Bar ${i + 1}</h2>
+      <div class="field"><label for="chordIn">Chord</label><input id="chordIn" value="${esc(b.chord)}" placeholder="e.g. Em7, F#m, G/B. Two chords: G D" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+      <p>Chords in ${esc(song.key)}. Tap to add; put a space between two chords to split the bar.</p>
+      <div class="chips" id="chordChips">${diatonicChords().map(c => `<button data-v="${c}">${prettyChord(c)}</button>`).join("")}</div>
       <div class="field"><label for="secIn">Section label</label><input id="secIn" value="${esc(b.section)}" placeholder="Starts a section here (optional)"></div>
       <div class="chips" id="secChips">${secChips.map(c => `<button data-v="${c}">${c}</button>`).join("")}</div>
-      <div class="panel-actions"><button class="btn" id="chClear">Clear both</button><button class="btn primary" id="chDone">Done</button></div>
-    </div></div>`;
+      <div class="panel-actions"><button class="btn" id="chClear">Clear both</button><button class="btn primary" id="chDone">Done</button></div>`);
     const ci = document.getElementById("chordIn"), si = document.getElementById("secIn");
-    document.getElementById("chordChips").onclick = e => { const v = e.target.dataset.v; if (v) ci.value = v; };
-    document.getElementById("secChips").onclick = e => { const v = e.target.dataset.v; if (v) si.value = v; };
-    const close = applyIt => {
-      if (applyIt) { pushUndo(); b.chord = ci.value.trim(); b.section = si.value.trim(); commit(); }
-      host.innerHTML = "";
+    document.getElementById("chordChips").onclick = e => {
+      const v = e.target.closest("[data-v]"); if (!v) return;
+      const cur = ci.value.trim().split(/\s+/).filter(Boolean);
+      ci.value = cur.length === 1 ? cur[0] + " " + v.dataset.v : v.dataset.v;
     };
+    document.getElementById("secChips").onclick = e => { const v = e.target.dataset.v; if (v) si.value = v; };
+    const close = apply => { if (apply) { pushUndo(); b.chord = ci.value.trim(); b.section = si.value.trim(); commit(); } closeSheet(); };
     document.getElementById("chDone").onclick = () => close(true);
     document.getElementById("chClear").onclick = () => { ci.value = ""; si.value = ""; close(true); };
-    document.getElementById("ov").addEventListener("click", e => { if (e.target.id === "ov") close(true); });
+    ov.addEventListener("click", e => { if (e.target.id === "ov") close(true); });
     [ci, si].forEach(inp => inp.addEventListener("keydown", e => { if (e.key === "Enter") close(true); if (e.key === "Escape") close(false); }));
   }
 
-  // ---------------- LilyPond export ----------------
+  function openAddPart() {
+    const ov = overlay(`
+      <h2>Add a part</h2>
+      <p>Each part gets its own line in the score. Guitar and bass parts also get tab.</p>
+      <div class="chips" id="kindChips">${Object.entries(KIND).map(([k, v]) => `<button data-k="${k}">${v.label}</button>`).join("")}</div>
+      <div class="panel-actions"><button class="btn" id="apCancel">Cancel</button></div>`);
+    document.getElementById("kindChips").onclick = e => {
+      const b = e.target.closest("[data-k]"); if (!b) return;
+      pushUndo();
+      const kind = b.dataset.k, base = KIND[kind].label;
+      const count = song.parts.filter(p => p.kind === kind).length;
+      song.parts.push(newPart(kind, count ? `${base} ${count + 1}` : base));
+      closeSheet(); state.view = "all";
+      setActivePart(song.parts.length - 1); renderParts(); commit();
+      toast(`Added ${song.parts[song.parts.length - 1].name}`);
+    };
+    document.getElementById("apCancel").onclick = closeSheet;
+    ov.addEventListener("click", e => { if (e.target.id === "ov") closeSheet(); });
+  }
+
+  function openPartSettings() {
+    const p = P(), k = partKind(p);
+    let tuning = p.tuning ? p.tuning.slice() : null;
+    let confirmDelete = false;
+    const draw = () => {
+      const presetHTML = k.fretted ? `
+        <div class="field"><label>Tuning</label></div>
+        <div class="chips" id="presetChips">${PRESETS[k.presets].map((pr, i) => `<button data-i="${i}" aria-pressed="${pr.open.join() === tuning.join()}">${pr.name}</button>`).join("")}</div>
+        <div class="tuning-rows" id="tRows">${tuning.map((m, i) => `<div class="tuning-row"><span class="sn">String ${i + 1}</span><button data-s="${i}" data-d="-1" aria-label="Lower string ${i + 1}">−</button><span class="nn">${esc(noteName(m))}</span><button data-s="${i}" data-d="1" aria-label="Raise string ${i + 1}">+</button></div>`).join("")}</div>
+        <div class="chips"><button id="addStr" ${tuning.length >= 8 ? "disabled" : ""}>+ Low string</button><button id="remStr" ${tuning.length <= 4 ? "disabled" : ""}>− Low string</button></div>
+        <p>Changing the tuning keeps the notes and moves the tab to the new strings.</p>` : `<p>${k.grand ? "Keys parts use a grand staff. Notes from middle C up go on the top staff." : "Lead parts use a single treble staff."}</p>`;
+      const ov = overlay(`
+        <h2>${esc(p.name)}</h2>
+        <div class="field"><label for="pName">Part name</label><input id="pName" value="${esc(p.name)}"></div>
+        ${presetHTML}
+        <div class="panel-actions">${song.parts.length > 1 ? `<button class="btn danger" id="pDel">${confirmDelete ? "Tap again to delete" : "Delete part"}</button>` : ""}<span class="grow"></span><button class="btn" id="pCancel">Cancel</button><button class="btn primary" id="pDone">Done</button></div>`);
+      const nameIn = document.getElementById("pName");
+      const keepName = () => { p._draftName = nameIn.value; };
+      if (p._draftName != null) nameIn.value = p._draftName;
+      if (k.fretted) {
+        document.getElementById("presetChips").onclick = e => { const b = e.target.closest("[data-i]"); if (!b) return; keepName(); tuning = PRESETS[k.presets][+b.dataset.i].open.slice(); draw(); };
+        document.getElementById("tRows").onclick = e => { const b = e.target.closest("[data-s]"); if (!b) return; keepName(); tuning[+b.dataset.s] += +b.dataset.d; draw(); };
+        document.getElementById("addStr").onclick = () => { keepName(); tuning.push(tuning[tuning.length - 1] - 5); draw(); };
+        document.getElementById("remStr").onclick = () => { keepName(); tuning.pop(); draw(); };
+      }
+      const del = document.getElementById("pDel");
+      if (del) del.onclick = () => {
+        if (!confirmDelete) { keepName(); confirmDelete = true; draw(); return; }
+        pushUndo(); song.parts.splice(state.part, 1); delete p._draftName; closeSheet();
+        state.part = 0; state.sel = null; state.cur = { bar: Math.min(state.cur.bar, song.bars.length - 1), pos: 0 };
+        state.cur.pos = P().bars[state.cur.bar].length; state.kbStart = partKind(P()).kb;
+        if (!partKind(P()).fretted) state.mode = "notation";
+        syncMode(); renderParts(); renderPad(); commit(); toast(`Deleted ${p.name}`);
+      };
+      document.getElementById("pCancel").onclick = () => { delete p._draftName; closeSheet(); };
+      document.getElementById("pDone").onclick = () => {
+        pushUndo();
+        p.name = nameIn.value.trim() || k.label; delete p._draftName;
+        if (k.fretted && tuning.join() !== p.tuning.join()) {
+          // Strings may have been removed; re-finger everything against the new tuning.
+          p.tuning = tuning; fingerPart(p); state.tabString = Math.min(state.tabString, tuning.length);
+          toast("Tuning changed. Tab updated for the new strings.");
+        }
+        closeSheet(); renderParts(); renderPad(); commit();
+      };
+      ov.addEventListener("click", e => { if (e.target.id === "ov") { delete p._draftName; closeSheet(); } });
+    };
+    draw();
+  }
+
+  // ================= LilyPond export =================
+  const STD = { 48: "1.", 32: "1", 24: "2.", 16: "2", 12: "4.", 8: "4", 6: "8.", 4: "8", 3: "16.", 2: "16", 1: "32" };
+  function durTok(units) {
+    if (STD[units]) return STD[units];
+    const { den } = timeSig(), per = 32 / den;
+    if (units % per === 0) return `${den}*${units / per}`;
+    return `32*${units}`;
+  }
+  function restsFor(units, r) {
+    const out = []; let u = units;
+    [32, 24, 16, 12, 8, 6, 4, 3, 2, 1].forEach(n => { while (u >= n) { out.push(r + STD[n]); u -= n; } });
+    return out;
+  }
   function lyPitch(m) {
-    const pc = ((m % 12) + 12) % 12, oct = Math.floor(m / 12) - 1;
-    return LY[pc] + (oct >= 3 ? "'".repeat(oct - 3) : ",".repeat(3 - oct));
+    const s = spell(m);
+    let name = LET_LO[s.letter];
+    if (s.alter > 0) name += "is";
+    if (s.alter < 0) name += (s.letter === 2 || s.letter === 5) ? "s" : "es";
+    return name + (s.oct >= 3 ? "'".repeat(s.oct - 3) : ",".repeat(3 - s.oct));
+  }
+  function lyRoot(letter, acc) {
+    const l = letter.toLowerCase();
+    if (acc === "#") return l + "is";
+    if (acc === "b") return l + (l === "e" || l === "a" ? "s" : "es");
+    return l;
   }
   function lyChord(txt) {
     const m = /^([A-Ga-g])([#b]?)([^/]*)(?:\/([A-Ga-g])([#b]?))?$/.exec(txt.trim());
     if (!m) return null;
-    const root = (l, acc) => l.toLowerCase() + (acc === "#" ? "is" : acc === "b" ? "es" : "");
-    const q = m[3];
     const map = { "": "", "m": ":m", "min": ":m", "m7": ":m7", "7": ":7", "maj7": ":maj7", "M7": ":maj7", "sus4": ":sus4", "sus2": ":sus2", "sus": ":sus4", "dim": ":dim", "dim7": ":dim7", "aug": ":aug", "+": ":aug", "6": ":6", "m6": ":m6", "9": ":9", "m9": ":m9", "add9": ":5.9", "m7b5": ":m7.5-", "5": ":5" };
-    const qual = map[q] !== undefined ? map[q] : null;
-    if (qual === null) return null;
-    return { root: root(m[1], m[2]), qual, bass: m[4] ? "/" + root(m[4], m[5]) : "" };
+    if (map[m[3]] === undefined) return null;
+    return { root: lyRoot(m[1], m[2]), qual: map[m[3]], bass: m[4] ? "/" + lyRoot(m[4], m[5]) : "" };
   }
-  function spacerFor(remaining16) {
-    const parts = []; let r = remaining16;
-    [[16, "1"], [8, "2"], [4, "4"], [2, "8"], [1, "16"]].forEach(([n, d]) => { while (r >= n) { parts.push("s" + d); r -= n; } });
-    return parts.join(" ");
+  function partMusic(p, filter) {
+    const { num, den } = timeSig(); const cap32 = num * 32 / den;
+    const fretted = partKind(p).fretted;
+    const lines = [];
+    p.bars.forEach((evs, i) => {
+      if (!evs.length) { lines.push(`  R${durTok(cap32)} | % bar ${i + 1}`); return; }
+      const toks = evs.map(e => {
+        const d = e.dur + (e.dot ? "." : "");
+        if (e.type === "rest") return "r" + d;
+        const ns = (filter ? e.notes.filter(n => filter(n.midi)) : e.notes).slice().sort((a, b) => a.midi - b.midi);
+        if (!ns.length) return "s" + d;
+        const pitch = n => lyPitch(n.midi) + (fretted && n.string && n.fret >= 0 && n.fret <= maxFret(p) ? `\\${n.string}` : "");
+        if (ns.length === 1) {
+          const n = ns[0];
+          return lyPitch(n.midi) + d + (fretted && n.string && n.fret >= 0 && n.fret <= maxFret(p) ? `\\${n.string}` : "");
+        }
+        return `<${ns.map(pitch).join(" ")}>${d}`;
+      });
+      const f32 = Math.round(fillOf(evs) * 32);
+      if (f32 < cap32) toks.push(...restsFor(cap32 - f32, "r"));
+      lines.push(`  ${toks.join(" ")} | % bar ${i + 1}${f32 > cap32 ? " (too long)" : ""}`);
+    });
+    return lines.join("\n");
   }
   function buildLily() {
-    const t = tuning(); const title = (song.title || "Untitled").replace(/"/g, '\\"');
-    const lines = []; const harm = []; const struct = []; const warn = [];
-    song.bars.forEach((b, i) => {
-      const toks = b.events.map(e => {
-        const d = e.dur + (e.dot ? "." : "");
-        return e.type === "rest" ? "r" + d : `${lyPitch(e.midi)}${d}\\${e.string}`;
-      });
-      const fill16 = Math.round(barFill(b) * 16);
-      if (fill16 < 16) toks.push(spacerFor(16 - fill16));
-      if (fill16 > 16) warn.push(`% bar ${i + 1} is longer than 4 beats`);
-      lines.push(`  ${toks.join(" ")} | % bar ${i + 1}`);
-      const c = b.chord ? lyChord(b.chord) : null;
-      if (b.chord && !c) warn.push(`% bar ${i + 1}: chord "${b.chord}" not recognized, left out`);
-      harm.push(c ? `${c.root}1${c.qual}${c.bass}` : "s1");
-      struct.push((b.section ? `\\mark \\markup \\box "${b.section.replace(/"/g, '\\"')}" ` : "") + "s1");
+    const { num, den } = timeSig(); const cap32 = num * 32 / den;
+    const title = (song.title || "Untitled").replace(/"/g, '\\"');
+    const km = /^([A-G])([#b]?)(m?)$/.exec(song.key);
+    const keyLy = `\\key ${lyRoot(km[1], km[2])} ${km[3] ? "\\minor" : "\\major"}`;
+    const warn = [];
+    const harm = song.bars.map((b, i) => {
+      const cs = (b.chord || "").trim().split(/\s+/).filter(Boolean);
+      if (!cs.length) return `s${durTok(cap32)}`;
+      const each = cap32 / cs.length;
+      const dt = Number.isInteger(each) ? durTok(each) : `32*${cap32}/${cs.length}`;
+      return cs.map(c => {
+        const p = lyChord(c);
+        if (!p) { warn.push(`% bar ${i + 1}: chord "${c}" not recognized, left out`); return `s${dt}`; }
+        return `${p.root}${dt}${p.qual}${p.bass}`;
+      }).join(" ");
+    });
+    const struct = song.bars.map(b => (b.section ? `\\mark \\markup \\box "${b.section.replace(/"/g, '\\"')}" ` : "") + `s${durTok(cap32)}`);
+    const V = "ABCDEFGHIJKLMNOP";
+    let vars = "", scoreStaves = "", books = "";
+    song.parts.forEach((p, i) => {
+      const k = partKind(p), v = "part" + V[i], nm = p.name.replace(/"/g, '\\"');
+      const struc = i === 0 ? " \\structure" : "";
+      if (k.grand) {
+        vars += `${v}Upper = {\n${partMusic(p, m => m >= 60)}\n}\n\n${v}Lower = {\n${partMusic(p, m => m < 60)}\n}\n\n`;
+        const ps = st => `    \\new PianoStaff \\with { instrumentName = "${nm}" } <<\n      \\new Staff << { \\clef treble \\global${st} } \\${v}Upper >>\n      \\new Staff << { \\clef bass \\global } \\${v}Lower >>\n    >>\n`;
+        scoreStaves += ps(struc);
+        books += partBook(i, p, ps(" \\structure"));
+      } else {
+        vars += `${v} = {\n${partMusic(p)}\n}\n\n`;
+        const st = s2 => `    \\new Staff \\with { instrumentName = "${nm}"${k.fretted ? " \\omit StringNumber" : ""} }\n      << { \\clef "${k.lyClef}" \\global${s2} } \\${v} >>\n`;
+        scoreStaves += st(struc);
+        const tab = k.fretted ? `    \\new TabStaff \\with { stringTunings = \\stringTuning <${p.tuning.slice().reverse().map(lyPitch).join(" ")}> }\n      \\${v}\n` : "";
+        books += partBook(i, p, st(" \\structure") + tab);
+      }
     });
     return `\\version "2.24.0"
-% Generated by the chart editor prototype. Each part is written once;
-% the staff and tab below are both drawn from \\music.
+% Generated by the chart editor prototype.
+% Each part is written once below, then used in the full score and in its own part.
 ${warn.join("\n")}${warn.length ? "\n" : ""}
 \\header {
   title = "${title}"
   tagline = ##f
 }
 
-global = { \\time 4/4 \\tempo 4 = ${song.tempo || 100} }
+global = { ${keyLy} \\time ${num}/${den} }
 
 structure = {
+  \\tempo 4 = ${song.tempo || 100}
   ${struct.join(" ")}
 }
 
@@ -802,37 +1453,45 @@ harmony = \\chordmode {
   ${harm.join(" ")}
 }
 
-music = {
-${lines.join("\n")}
-}
-
-\\score {
+${vars}% Full score
+\\book {
+  \\bookOutputSuffix "score"
+  \\score {
   <<
     \\new ChordNames \\harmony
-    \\new Staff \\with { instrumentName = "${t.name}" \\omit StringNumber }
-      << { \\clef "${t.lyClef}" \\global \\structure } \\music >>
-    \\new TabStaff \\with { stringTunings = #${t.lyTuning} }
-      \\music
-  >>
+${scoreStaves}  >>
   \\layout { }
+  }
+}
+${books}`;
+  }
+  function partBook(i, p, staves) {
+    const suffix = p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "part" + (i + 1);
+    return `
+% ${p.name} part
+\\book {
+  \\bookOutputSuffix "${suffix}"
+  \\header { instrument = "${p.name.replace(/"/g, '\\"')}" }
+  \\score {
+  \\compressMMRests <<
+    \\new ChordNames \\harmony
+${staves}  >>
+  \\layout { }
+  }
 }
 `;
   }
   function openLily() {
     const code = buildLily();
-    host.innerHTML = `<div class="overlay" id="ov"><div class="panel" role="dialog" aria-modal="true" aria-labelledby="lyTitle">
-      <h2 id="lyTitle">LilyPond source</h2>
-      <p>This is what the app would save and version. The notation and the tab both come from the same <code>music</code> block, with string numbers so the tab keeps your fingerings.</p>
+    const ov = overlay(`
+      <h2>LilyPond source</h2>
+      <p>This is what the app would save and version. Running LilyPond on it prints a full score plus one part for each player. Guitar and bass parts include tab that keeps your string choices.</p>
       <pre class="code" id="lyCode">${esc(code)}</pre>
-      <div class="panel-actions"><button class="btn" id="lyClose">Close</button><button class="btn primary" id="lyCopy">Copy</button></div>
-    </div></div>`;
-    document.getElementById("lyClose").onclick = () => host.innerHTML = "";
-    document.getElementById("ov").addEventListener("click", e => { if (e.target.id === "ov") host.innerHTML = ""; });
+      <div class="panel-actions"><button class="btn" id="lyClose">Close</button><button class="btn primary" id="lyCopy">Copy</button></div>`);
+    document.getElementById("lyClose").onclick = closeSheet;
+    ov.addEventListener("click", e => { if (e.target.id === "ov") closeSheet(); });
     document.getElementById("lyCopy").onclick = () => {
-      const done = () => toast("Copied");
-      try {
-        navigator.clipboard.writeText(code).then(done, () => selectCode());
-      } catch (e) { selectCode(); }
+      try { navigator.clipboard.writeText(code).then(() => toast("Copied"), selectCode); } catch (e) { selectCode(); }
     };
   }
   function selectCode() {
@@ -840,44 +1499,46 @@ ${lines.join("\n")}
     const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); toast("Selected. Copy it from the menu.");
   }
 
-  // ---------------- Sound ----------------
+  // ================= Sound =================
   let actx = null;
   function ctx() { if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { actx = null; } } return actx; }
-  function tone(midi, when, len) {
+  function tone(midi, when, len, vol) {
     const c = ctx(); if (!c) return;
     const f = 440 * Math.pow(2, (midi - 69) / 12);
-    const o = c.createOscillator(), o2 = c.createOscillator(), g = c.createGain();
-    o.type = "triangle"; o2.type = "sine"; o.frequency.value = f; o2.frequency.value = f * 2;
-    const g2 = c.createGain(); g2.gain.value = 0.25;
+    const o = c.createOscillator(), o2 = c.createOscillator(), g = c.createGain(), g2 = c.createGain();
+    o.type = "triangle"; o2.type = "sine"; o.frequency.value = f; o2.frequency.value = f * 2; g2.gain.value = 0.25;
     o.connect(g); o2.connect(g2); g2.connect(g); g.connect(c.destination);
     const end = when + Math.max(0.15, Math.min(len, 1.6));
     g.gain.setValueAtTime(0.0001, when);
-    g.gain.exponentialRampToValueAtTime(0.28, when + 0.008);
+    g.gain.exponentialRampToValueAtTime(vol, when + 0.008);
     g.gain.exponentialRampToValueAtTime(0.0001, end);
     o.start(when); o2.start(when); o.stop(end + 0.05); o2.stop(end + 0.05);
   }
-  function blip(midi) { const c = ctx(); if (!c) return; if (c.state === "suspended") c.resume(); tone(midi, c.currentTime + 0.005, 0.35); }
-
+  function blip(midis) {
+    const c = ctx(); if (!c) return; if (c.state === "suspended") c.resume();
+    midis.forEach(m => tone(m, c.currentTime + 0.005, 0.4, 0.26 / Math.sqrt(midis.length)));
+  }
   const playBtn = document.getElementById("playBtn");
   function play() {
     if (state.playing) { stop(); return; }
     const c = ctx(); if (!c) return toast("Sound isn't available in this browser");
     if (c.state === "suspended") c.resume();
-    const spb = 60 / (song.tempo || 100);
-    let tt = c.currentTime + 0.1; const t0 = tt;
-    const timers = [];
-    const startBar = state.sel ? state.sel.bar : 0;
-    song.bars.slice(startBar).forEach((b, k) => {
-      const barStart = tt;
-      b.events.forEach(e => {
-        const len = evLen(e) * 4 * spb;
-        if (e.type === "note") tone(e.midi, tt, len);
-        tt += len;
+    const spw = 4 * 60 / (song.tempo || 100); // seconds per whole note
+    const start = state.sel ? state.sel.bar : 0;
+    const t0 = c.currentTime + 0.1, barSec = barCap() * spw;
+    let total = 0;
+    song.parts.forEach(p => {
+      p.bars.slice(start).forEach((evs, k) => {
+        let tt = t0 + k * barSec;
+        evs.forEach(e => {
+          const len = evLen(e) * spw;
+          if (e.type === "note") e.notes.forEach(n => tone(n.midi, tt, len, 0.2 / Math.sqrt(e.notes.length)));
+          tt += len;
+        });
       });
-      tt = Math.max(tt, barStart + (b.events.length ? 0 : 4 * spb));
     });
-    const total = (tt - t0) * 1000 + 200;
-    state.playing = setTimeout(stop, total);
+    total = (song.bars.length - start) * barSec;
+    state.playing = setTimeout(stop, total * 1000 + 300);
     playBtn.textContent = "■ Stop";
   }
   function stop() {
@@ -887,52 +1548,49 @@ ${lines.join("\n")}
   }
   playBtn.onclick = play;
 
-  // ---------------- Header controls ----------------
+  // ================= Header =================
   const titleIn = document.getElementById("songTitle");
-  titleIn.value = song.title || "";
-  titleIn.addEventListener("input", () => { song.title = titleIn.value; save(); });
   const tempoIn = document.getElementById("tempo");
-  tempoIn.value = song.tempo || 100;
+  const keySel = document.getElementById("keySel");
+  const timeSel = document.getElementById("timeSel");
+  keySel.innerHTML = `<optgroup label="Major">${KEYS.filter(k => !/m$/.test(k[0])).map(k => `<option value="${k[0]}">${k[0].replace("b", "♭")}</option>`).join("")}</optgroup><optgroup label="Minor">${KEYS.filter(k => /m$/.test(k[0])).map(k => `<option value="${k[0]}">${k[0].replace("#", "♯").replace(/([A-G])b/, "$1♭")}</option>`).join("")}</optgroup>`;
+  timeSel.innerHTML = TIMES.map(t => `<option>${t}</option>`).join("");
+  function syncHeader() { titleIn.value = song.title || ""; tempoIn.value = song.tempo || 100; keySel.value = song.key; timeSel.value = song.time; syncMode(); }
+  titleIn.addEventListener("input", () => { song.title = titleIn.value; save(); });
   tempoIn.addEventListener("change", () => { const v = Math.max(40, Math.min(240, +tempoIn.value || 100)); tempoIn.value = v; song.tempo = v; save(); });
-
-  function setInstrument(name) {
-    if (song.instrument === name) return;
-    pushUndo(); song.instrument = name; assignAllStrings(song);
-    state.kbStart = TUNINGS[name].kbStart; state.tabString = Math.min(state.tabString, TUNINGS[name].open.length);
-    syncInstrumentUI(); commit(); renderPad();
-    toast(`Switched to ${TUNINGS[name].name}. Tab re-fingered for its strings.`);
-  }
-  function syncInstrumentUI() {
-    document.getElementById("instGuitar").setAttribute("aria-pressed", String(song.instrument === "guitar"));
-    document.getElementById("instBass").setAttribute("aria-pressed", String(song.instrument === "bass"));
-    titleIn.value = song.title || ""; tempoIn.value = song.tempo || 100;
-  }
-  document.getElementById("instGuitar").onclick = () => setInstrument("guitar");
-  document.getElementById("instBass").onclick = () => setInstrument("bass");
+  keySel.addEventListener("change", () => { pushUndo(); song.key = keySel.value; commit(); renderPad(); });
+  timeSel.addEventListener("change", () => {
+    pushUndo(); song.time = timeSel.value; commit();
+    toast(`Time is now ${song.time}. Bars keep their notes, so check any marked too long.`);
+  });
 
   function setMode(m) {
-    state.mode = m;
-    document.getElementById("modeNotation").setAttribute("aria-pressed", String(m === "notation"));
-    document.getElementById("modeTab").setAttribute("aria-pressed", String(m === "tab"));
-    renderPad(); render();
+    if (m === "tab" && !partKind(P()).fretted) return toast(`${P().name} has no tab. Pick a guitar or bass part to write tab.`);
+    state.mode = m; syncMode(); renderPad(); render();
+  }
+  function syncMode() {
+    document.getElementById("modeNotation").setAttribute("aria-pressed", String(state.mode === "notation"));
+    document.getElementById("modeTab").setAttribute("aria-pressed", String(state.mode === "tab"));
+    document.getElementById("modeTab").disabled = !partKind(P()).fretted;
   }
   document.getElementById("modeNotation").onclick = () => setMode("notation");
   document.getElementById("modeTab").onclick = () => setMode("tab");
-
   document.getElementById("lilyBtn").onclick = openLily;
   document.getElementById("dotBtn").onclick = toggleDot;
   document.getElementById("restBtn").onclick = enterRest;
+  document.getElementById("chordBtn").onclick = toggleChord;
   document.getElementById("leftBtn").onclick = () => move(-1);
   document.getElementById("rightBtn").onclick = () => move(1);
   document.getElementById("delBtn").onclick = del;
   document.getElementById("undoBtn").onclick = undo;
 
-  // ---------------- Hardware keyboard (iPad keyboard case or laptop) ----------------
+  // ================= Hardware keyboard =================
   document.addEventListener("keydown", e => {
     if (host.innerHTML) return;
-    if (e.target.matches("input, textarea")) return;
+    if (e.target.matches("input, textarea, select")) return;
     const k = e.key;
     if ((e.metaKey || e.ctrlKey) && k.toLowerCase() === "z") { e.preventDefault(); undo(); return; }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (k === "ArrowLeft") { e.preventDefault(); move(-1); }
     else if (k === "ArrowRight") { e.preventDefault(); move(1); }
     else if (k === "ArrowUp") { e.preventDefault(); state.mode === "tab" ? changeString(-1) : transpose(1); }
@@ -940,33 +1598,36 @@ ${lines.join("\n")}
     else if (k === "Backspace" || k === "Delete") { e.preventDefault(); del(); }
     else if (k === ".") toggleDot();
     else if (k.toLowerCase() === "r") enterRest();
+    else if (k.toLowerCase() === "s") toggleChord();
     else if (state.mode === "tab" && /^[0-9]$/.test(k)) {
-      // Two-digit frets: type "1" then "2" quickly for 12.
       clearTimeout(state.fretTimer);
       state.fretBuf += k;
-      const n = +state.fretBuf;
-      if (state.fretBuf.length === 2 || n * 10 > tuning().maxFret) { const v = n; state.fretBuf = ""; if (v <= tuning().maxFret) enterFret(v); }
+      const n = +state.fretBuf, mf = maxFret(P());
+      if (state.fretBuf.length === 2 || n * 10 > mf) { state.fretBuf = ""; if (n <= mf) enterFret(n); }
       else state.fretTimer = setTimeout(() => { const v = +state.fretBuf; state.fretBuf = ""; enterFret(v); }, 450);
     }
     else if (state.mode === "notation" && /^[a-gA-G]$/.test(k)) {
       const target = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 }[k.toLowerCase()];
-      const sel = selected(); let ref = sel && sel.type === "note" ? sel.midi : null;
-      if (ref == null) { const f = flat(); for (let j = f.length - 1; j >= 0; j--) { const ev = song.bars[f[j].bar].events[f[j].idx]; if (ev.type === "note") { ref = ev.midi; break; } } }
+      const sel = selected();
+      let ref = sel && sel.type === "note" ? Math.max(...sel.notes.map(n => n.midi)) : null;
+      if (ref == null) { const f = flat(); for (let j = f.length - 1; j >= 0; j--) { const ev = P().bars[f[j].bar][f[j].idx]; if (ev.type === "note") { ref = ev.notes[ev.notes.length - 1].midi; break; } } }
       if (ref == null) ref = state.kbStart + 12;
-      let best = null; for (let m = ref - 6; m <= ref + 6; m++) if (((m % 12) + 12) % 12 === target) { best = m; break; }
+      let best = null;
+      const lo = state.chord && sel ? ref + 1 : ref - 6, hi = state.chord && sel ? ref + 12 : ref + 6;
+      for (let m = lo; m <= hi; m++) if (mod(m, 12) === target) { best = m; break; }
       enterPitch(e.shiftKey ? best + 1 : best);
     }
   });
 
-  // ---------------- Misc ----------------
+  // ================= Misc =================
   let toastTimer = 0;
   function toast(msg) {
     let el = document.getElementById("toast");
     if (!el) { el = document.createElement("div"); el.id = "toast"; el.className = "toast"; el.setAttribute("role", "status"); document.body.appendChild(el); }
-    el.textContent = msg; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.hidden = true, 2200);
+    el.textContent = msg; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.hidden = true, 2400);
   }
   window.addEventListener("resize", () => renderScore());
 
-  syncInstrumentUI(); renderPad(); render();
+  syncHeader(); renderParts(); renderPad(); render();
 })();
 </script>
