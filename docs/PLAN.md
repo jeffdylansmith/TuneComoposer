@@ -1,6 +1,6 @@
 # Tune Composer: Positioning and Development Plan
 
-*Last updated November 8, 2026*
+*Last updated November 9, 2026*
 
 ## Positioning
 
@@ -63,7 +63,8 @@ The principle: each phase ships something useful on its own. Editor polish conti
 - **Done when:** you can chart the next three songs your band actually plays without workarounds
 
 ### Phase 2: The backbone
-- Accounts and sign-in
+- Invite-only accounts and sign-in (see Accounts, sign-in and permissions)
+- A basic Act with members and roles, enough that your band's songs are private to the band
 - Songs saved on a server instead of in one browser
 - Every save is a version in git, with history and restore
 - A server running LilyPond that produces real PDFs for the score and every part
@@ -72,7 +73,7 @@ The principle: each phase ships something useful on its own. Editor polish conti
 - **Done when:** you can start a chart on the iPad, open it on a laptop, and print parts from either
 
 ### Phase 3: Private collaboration in your circle
-- Acts and artist profiles; invite players and set roles (owner, editor, player)
+- Artist profiles, multiple Acts, and owners inviting their own players (building on Phase 2's basic Act and roles)
 - Songs owned by Acts; writer and player credits
 - Visibility: you see what you created or are tied to
 - Branches for arrangements, visual diffs, proposals the owner approves
@@ -98,11 +99,50 @@ The principle: each phase ships something useful on its own. Editor polish conti
 
 **Stretch goals:** playing parts in by MIDI or importing them from the MPC; chord-chart-first entry; Apple Pencil input.
 
+## Accounts, sign-in and permissions
+
+**Starts locked down.** The first version is invite-only, for your band. Opening sign-ups later is a setting change, not a rebuild.
+
+**No passwords, ever.** The app never stores passwords. People sign in with:
+- **Google**
+- **An emailed one-time code or link,** for anyone without a Google account
+
+Apple and Microsoft sign-in can be added later.
+
+**How invite-only works:**
+1. You (the label admin) create an invite: the person's email, the Acts they belong to, and their role in each.
+2. They sign in with Google or an email code.
+3. On first sign-in, the app matches their email to the invite and activates their account.
+4. Anyone without an invite sees "This is invite-only for now."
+
+**Data model:** "who you are" is kept separate from "how you signed in," so new sign-in methods never require changes elsewhere.
+- **User:** the app's own record (name, profile, reading preferences, label-admin flag)
+- **Sign-in identity:** linked to a user, such as a Google account or a verified email. One user can have several.
+- **Invite:** email, Acts, role per Act, status (pending, accepted, revoked), and who invited them
+- **Membership:** user, Act and role
+
+**Roles:**
+- **Label admin (you):** manages invites, Acts and everything else
+- **Act owner:** manages the Act's members and songs
+- **Editor:** creates and changes charts
+- **Player:** views charts and exports their parts
+
+One person can hold different roles in different Acts, such as editor in one band and player in another.
+
+**Permission rules:**
+- Songs are private to their Act until Phase 5 adds public visibility.
+- The server checks permissions on every request, not just in the screens, so a guessed link never exposes a song.
+- Removing someone from an Act removes their access right away. Their credits and version history stay, because credit belongs to the work.
+
+**Implementation options (decide with the Phase 2 stack):**
+1. **Built-in sign-in for Azure Container Apps:** handles Google and Microsoft sign-in in front of the app with very little code. Fastest, but less flexible.
+2. **Microsoft Entra External ID, or a standard auth library in the app:** supports Google, email codes and Apple, with full control over the sign-in screens and the invite check. **Current lean:** a well-known library, since it's portable, testable locally, and not tied to one host.
+
 ## Architecture notes
 
 - **The editor is a separate module** from the social and catalog app. It reads and writes one song model and produces LilyPond. The rest of the app never needs to know notation details.
 - **One shared data model** underlies everything, so design it in Phase 2 even though most of it surfaces later:
-  - User
+  - User, Sign-in identity, Invite
   - Act or Artist
   - Membership (with role)
   - Song, with credits (role, person, and what they're credited on: song, arrangement or part)
@@ -121,14 +161,14 @@ Decided: host on the existing Azure account. The likely shape, to confirm when P
 - **Database:** Azure Database for PostgreSQL (Flexible Server), for users, Acts, songs, credits and visibility.
 - **Files:** Azure Blob Storage for rendered PDFs now, and for audio and project files later.
 - **Git repos for songs:** stored by the app on persistent storage, with Blob backups.
-- **Sign-in:** Microsoft Entra External ID, or a standard auth library with email and Google/Apple sign-in. Decide in Phase 2.
+- **Sign-in:** invite-only, with Google and email codes and no passwords. See Accounts, sign-in and permissions.
 - **Deploys:** GitHub Actions from the TuneComoposer repo.
 
 ## Deferred
 - **Cover songs.** Public arrangements of covers, and selling them, need licensing and a policy decision. Parked; the focus is original work. Private charts of covers for your own band's practice are fine to support, since they're never published.
 
 ## Open questions
-- Exact Azure setup and sign-in approach (Phase 2)
+- Exact Azure setup, app stack, and which sign-in option to use (Phase 2)
 - Whether the editor's JSON model or the LilyPond file is the source of truth when they disagree. The current lean is JSON for editing and LilyPond as the versioned, rendered output, with both committed.
 - Pricing and revenue split for paid charts
 
