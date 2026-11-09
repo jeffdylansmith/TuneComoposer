@@ -17,6 +17,8 @@
 - **The chart is connected to the music.** A song links its charts to the sessions recorded from them, and later to releases.
 - **Community built around arrangements.** Musicians follow arrangers and Acts, fork and credit each other, and eventually buy and sell charts.
 
+**Focus on original work.** The community is for people making new things: original songs, original arrangements, and new parts. Cover songs are out of scope for now (see Deferred).
+
 **Honest risks:**
 - A notation editor never ends. We won't out-build Flat or MuseScore on engraving features, so we compete on the workflow around the chart.
 - A community is worthless until people are in it. We seed it with real content from our own label and bands before opening it up.
@@ -24,14 +26,24 @@
 ## Community ideas (for the musician audience)
 
 These build on what the tool already does, so they need little invention:
-- **Forks with credit.** "Arranged by X, forked from Y." The fork tree is visible, so good arrangements spread and their authors get the credit.
+- **Forks with credit.** "Arranged by X, forked from Y." The fork tree is visible, so good arrangements spread and their authors get the credit. See Credit tracking below.
 - **Arranger and Act profiles.** Public arrangements, instruments played, and the forks and plays each one has received.
 - **Browse by what you play.** Find songs that have a bass tab part in drop D, or 5-piece arrangements with horns.
 - **Lineup-aware forking.** Fork an arrangement for my band (two guitars, bass and keys, no horns) and get a starting point with parts mapped to my players.
 - **Requests.** "Looking for a full-band arrangement of ___", which arrangers can answer.
 - **Comments on bars.** Feedback pinned to a measure, the way code review comments pin to a line.
 - **Later: paid charts.** Arrangers sell charts and premium arrangements, with the creator keeping most of the money, Bandcamp-style.
-- **Licensing:** Public arrangements of original songs are simple. Arrangements of covers need a licensing plan before charts can be sold. Free sharing of cover arrangements also needs a policy decision.
+## Credit tracking (core principle)
+
+Credit is what makes people comfortable sharing creative work. It's tracked from day one, not bolted on with the community.
+
+- **Roles:** composer, lyricist, arranger, part writer (a specific instrument part), transcriber and performer. A song or arrangement can have several of each.
+- **Credit follows the work.** Credits live on the song (who wrote it), on each arrangement (who arranged it), and on each part (who wrote that part). A bass player who writes the bass line is credited for it even if someone else wrote the song.
+- **The history is the evidence.** Every version records who made it. The app can show who wrote which bars and when, from the git history. Credits can be edited, but changes to them are themselves recorded.
+- **Forks carry lineage.** A fork always points to its parent and keeps the original credits. New contributions are added on top, so a chart can show "Song by A, arrangement by B, forked and re-voiced for horns by C."
+- **Originality declaration.** Making a song public includes confirming it's original work, or your own arrangement of material you have rights to.
+- **Credits print on the charts.** Exported PDFs show the credits in the header, so they travel with the paper.
+- **Later:** credits feed splits and payouts when paid charts arrive.
 
 ## Development order
 
@@ -54,7 +66,8 @@ The principle: each phase ships something useful on its own. Editor polish conti
 - Songs saved on a server instead of in one browser
 - Every save is a version in git, with history and restore
 - A server running LilyPond that produces real PDFs for the score and every part
-- Pick hosting and set up deploys
+- Host on Azure (see Hosting) and set up automatic deploys from GitHub
+- The credit model from the start: version authorship, plus composer and arranger credits on songs
 - **Done when:** you can start a chart on the iPad, open it on a laptop, and print parts from either
 
 ### Phase 3: Private collaboration in your circle
@@ -78,7 +91,7 @@ The principle: each phase ships something useful on its own. Editor polish conti
 - **Done when:** musicians outside your circle fork and play arrangements
 
 ### Phase 6: Marketplace and business
-- Paid charts and arrangements, with a licensing approach for covers
+- Paid charts and arrangements of original work, with payouts based on credits
 - Splits, registrations and release metadata
 - Audio and project file storage
 
@@ -91,7 +104,7 @@ The principle: each phase ships something useful on its own. Editor polish conti
   - User
   - Act or Artist
   - Membership (with role)
-  - Song, with credits (writer or player)
+  - Song, with credits (role, person, and what they're credited on: song, arrangement or part)
   - Arrangement (a branch), Part, and Version (a git commit)
   - Session
   - Project
@@ -100,11 +113,23 @@ The principle: each phase ships something useful on its own. Editor polish conti
 - **LilyPond is the stored format.** It diffs as plain text and renders on the server. The editor's JSON model is what the UI edits, and it's regenerated from or saved alongside the LilyPond.
 - **Web app, touch-first,** tested on iPad throughout. Offline read-only charts for practice can come later; offline editing is deferred.
 
+## Hosting: Azure
+
+Decided: host on the existing Azure account. The likely shape, to confirm when Phase 2 starts:
+- **App and API:** Azure Container Apps. LilyPond runs in its own container, rendering PDFs on request and scaling to zero when idle to keep costs down.
+- **Database:** Azure Database for PostgreSQL (Flexible Server), for users, Acts, songs, credits and visibility.
+- **Files:** Azure Blob Storage for rendered PDFs now, and for audio and project files later.
+- **Git repos for songs:** stored by the app on persistent storage, with Blob backups.
+- **Sign-in:** Microsoft Entra External ID, or a standard auth library with email and Google/Apple sign-in. Decide in Phase 2.
+- **Deploys:** GitHub Actions from the TuneComoposer repo.
+
+## Deferred
+- **Cover songs.** Public arrangements of covers, and selling them, need licensing and a policy decision. Parked; the focus is original work. Private charts of covers for your own band's practice are fine to support, since they're never published.
+
 ## Open questions
-- Hosting provider and stack for Phase 2
+- Exact Azure setup and sign-in approach (Phase 2)
 - Whether the editor's JSON model or the LilyPond file is the source of truth when they disagree. The current lean is JSON for editing and LilyPond as the versioned, rendered output, with both committed.
 - Pricing and revenue split for paid charts
-- Policy for public arrangements of cover songs
 
 ## Prototypes in this repo
 - `prototypes/chart-editor/`: the editor (open `index.html`)
