@@ -58,7 +58,8 @@ The principle: each phase ships something useful on its own. Editor polish conti
   - Chord lane and section labels
   - Playback
   - LilyPond export with a score and per-player parts
-- **Still needed:** ties, triplets, repeats and endings, and a check that the LilyPond output compiles
+- **Also done:** ties (including across barlines and lines), triplets, repeats with 1st/2nd/3rd endings, and playback that follows repeats and sustains ties
+- **Still needed:** a check that the LilyPond output compiles. This happens naturally in Phase 2, when LilyPond runs on the server.
 - **Done when:** you can chart the next three songs your band actually plays without workarounds
 
 ### Phase 2: The backbone

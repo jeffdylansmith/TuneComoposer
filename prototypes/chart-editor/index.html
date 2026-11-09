@@ -273,6 +273,10 @@ pre.code {
       <button class="tool" id="chordBtn" aria-pressed="false" title="Stack notes into a chord (S)">
         <svg viewBox="0 0 22 26" aria-hidden="true"><ellipse cx="8" cy="21" rx="5" ry="3.5" transform="rotate(-20 8 21)" fill="currentColor"/><ellipse cx="8" cy="14" rx="5" ry="3.5" transform="rotate(-20 8 14)" fill="currentColor"/><ellipse cx="8" cy="7" rx="5" ry="3.5" transform="rotate(-20 8 7)" fill="currentColor"/></svg><span class="lbl">&nbsp;Chord</span>
       </button>
+      <button class="tool" id="tieBtn" title="Tie to the next note (T)">
+        <svg viewBox="0 0 26 26" aria-hidden="true" style="width:26px"><ellipse cx="5" cy="9" rx="3.6" ry="2.6" fill="currentColor"/><ellipse cx="21" cy="9" rx="3.6" ry="2.6" fill="currentColor"/><path d="M5,14 Q13,22 21,14" fill="none" stroke="currentColor" stroke-width="2"/></svg><span class="lbl">&nbsp;Tie</span>
+      </button>
+      <button class="tool" id="tripBtn" aria-pressed="false" title="Triplet (3)"><span style="font:italic 700 17px var(--font-body)">3</span><span class="lbl">&nbsp;Triplet</span></button>
       <span class="spacer"></span>
       <button class="tool" id="leftBtn" title="Previous (←)" aria-label="Previous note">◀</button>
       <button class="tool" id="rightBtn" title="Next (→)" aria-label="Next note">▶</button>
@@ -318,7 +322,7 @@ pre.code {
   ];
   const TIMES = ["4/4", "3/4", "2/4", "5/4", "6/8", "9/8", "12/8", "7/8"];
   const DURS = [1, 2, 4, 8, 16];
-  const STORE_KEY = "chart-editor-draft-v2";
+  const STORE_KEY = "chart-editor-draft-v3";
 
   const SH = [[0,0],[0,1],[1,0],[1,1],[2,0],[3,0],[3,1],[4,0],[4,1],[5,0],[5,1],[6,0]];
   const FL = [[0,0],[1,-1],[1,0],[2,-1],[2,0],[3,0],[4,-1],[4,0],[5,-1],[5,0],[6,-1],[6,0]];
@@ -360,7 +364,20 @@ pre.code {
   function noteName(m) { const s = spell(m); return LET_UP[s.letter] + (s.alter > 0 ? "♯" : s.alter < 0 ? "♭" : "") + s.oct; }
   function pcName(pc) { const s = spellPc(mod(pc, 12)); return LET_UP[s.letter] + (s.alter > 0 ? "#" : s.alter < 0 ? "b" : ""); }
 
-  const evLen = e => (1 / e.dur) * (e.dot ? 1.5 : 1);
+  const evLen = e => (1 / e.dur) * (e.dot ? 1.5 : 1) * (e.trip ? 2 / 3 : 1);
+  const nominal = e => (1 / e.dur) * (e.dot ? 1.5 : 1);
+  // Consecutive triplet notes form a group once they add up to a full triplet (e.g. three eighths = one beat).
+  function tripletGroups(items) {
+    const groups = []; let cur = [], S = 0;
+    items.forEach(it => {
+      if (!it.ev.trip) { if (cur.length) groups.push(cur); cur = []; S = 0; return; }
+      cur.push(it); S += nominal(it.ev);
+      const a = S * 2 / 3;
+      if ([1, 1 / 2, 1 / 4, 1 / 8, 1 / 16].some(v => Math.abs(a - v) < 1e-9)) { groups.push(cur); cur = []; S = 0; }
+    });
+    if (cur.length) groups.push(cur);
+    return groups;
+  }
   const fillOf = events => events.reduce((a, e) => a + evLen(e), 0);
   const eq = (a, b) => Math.abs(a - b) < 1e-9;
   const tk = t => Math.round(t * 96);
@@ -428,10 +445,11 @@ pre.code {
     const s = { title: "Practice Arrangement", tempo: 100, key: "G", time: "4/4", parts: [],
       bars: [
         { section: "Intro", chord: "G" }, { section: "", chord: "D" }, { section: "", chord: "Em" }, { section: "", chord: "C" },
-        { section: "Verse", chord: "G" }, { section: "", chord: "D" }, { section: "", chord: "Em" }, { section: "", chord: "C D" },
+        { section: "Verse", chord: "G", repStart: true }, { section: "", chord: "D" }, { section: "", chord: "Em" },
+        { section: "", chord: "C D", volta: "1", repEnd: true }, { section: "", chord: "C", volta: "2" },
       ] };
     song = s;
-    const n = (dur, midis, dot) => ({ type: "note", dur, dot: !!dot, notes: midis.map(m => ({ midi: m })) });
+    const n = (dur, midis, dot, extra) => ({ type: "note", dur, dot: !!dot, notes: midis.map(m => ({ midi: m })), ...(extra || {}) });
     const arp = ms => ms.map(m => n(8, [m]));
     const strum = v => [n(4, v), n(4, v), n(8, v), n(8, v), n(4, v)];
     const V = { G: [43, 47, 50, 55, 59, 67], D: [50, 57, 62, 66], Em: [40, 47, 52, 55, 59, 64], C: [48, 52, 55, 60, 64] };
@@ -441,17 +459,20 @@ pre.code {
       arp([43, 50, 55, 59, 62, 59, 55, 50]), arp([50, 57, 62, 66, 69, 66, 62, 57]),
       arp([40, 47, 52, 55, 59, 55, 52, 47]), arp([48, 55, 60, 64, 67, 64, 60, 55]),
       strum(V.G), strum(V.D), strum(V.Em), [n(4, V.C), n(4, V.C), n(8, V.D), n(8, V.D), n(4, V.D)],
+      [n(2, V.C, false, { tie: true }), n(2, V.C)],
     ];
     const bass = newPart("bass");
     const groove = (r, f) => [n(4, [r], true), n(8, [r]), n(4, [f]), n(8, [r + 12]), n(8, [f])];
     bass.bars = [
       [n(2, [31]), n(2, [38])], [n(2, [38]), n(2, [45])], [n(2, [28]), n(2, [35])], [n(2, [36]), n(2, [43])],
       groove(31, 38), groove(38, 45), groove(28, 35), [n(4, [36], true), n(8, [36]), n(4, [38]), n(8, [38]), n(8, [45])],
+      [n(4, [36]), n(4, [36]), n(8, [36], false, { trip: true }), n(8, [38], false, { trip: true }), n(8, [40], false, { trip: true }), n(4, [43])],
     ];
     const keys = newPart("keys");
     keys.bars = [[], [], [], [],
       [n(2, [43, 59, 62, 67]), n(2, [43, 59, 62, 67])], [n(2, [38, 57, 62, 66]), n(2, [38, 57, 62, 66])],
       [n(2, [40, 59, 64, 67]), n(2, [40, 59, 64, 67])], [n(2, [36, 55, 60, 64]), n(2, [38, 57, 62, 66])],
+      [n(1, [36, 55, 60, 64])],
     ];
     s.parts = [gtr, bass, keys];
     s.parts.forEach(fingerPart);
@@ -466,7 +487,7 @@ pre.code {
     part: 0,
     cur: { bar: 0, pos: 0 },
     sel: null,
-    dur: 8, dot: false, chord: false,
+    dur: 8, dot: false, chord: false, trip: false,
     mode: "notation",
     view: "all",
     showNotation: true,
@@ -517,8 +538,8 @@ pre.code {
     return null;
   }
 
-  function insertEvent(ev) {
-    pushUndo();
+  function insertEvent(ev, noUndo) {
+    if (!noUndo) pushUndo();
     const cap = barCap();
     let { bar, pos } = state.cur;
     let b = P().bars[bar];
@@ -566,7 +587,7 @@ pre.code {
     } else if (sel) {
       pushUndo(); sel.type = "note"; sel.notes = [mk()]; commit();
     } else {
-      insertEvent({ type: "note", dur: state.dur, dot: state.dot, notes: [mk()] });
+      insertEvent({ type: "note", dur: state.dur, dot: state.dot, trip: state.trip, notes: [mk()] });
     }
     if (forcedString) state.tabString = forcedString;
     else { const s = selected(); }
@@ -576,7 +597,48 @@ pre.code {
   function enterRest() {
     const sel = selected();
     if (sel) { pushUndo(); sel.type = "rest"; delete sel.notes; commit(); }
-    else insertEvent({ type: "rest", dur: state.dur, dot: state.dot });
+    else insertEvent({ type: "rest", dur: state.dur, dot: state.dot, trip: state.trip });
+  }
+  function toggleTrip() {
+    const sel = selected();
+    if (sel) { pushUndo(); sel.trip = !sel.trip; state.trip = sel.trip; commit(); }
+    else { state.trip = !state.trip; renderToolbar(); if (state.trip) toast("Triplet on: three notes fill the time of two"); }
+  }
+  function nextLoc(p, bar, idx) {
+    if (idx + 1 < p.bars[bar].length) return { bar, idx: idx + 1 };
+    if (p.bars[bar + 1] && p.bars[bar + 1].length) return { bar: bar + 1, idx: 0 };
+    return null;
+  }
+  function prevEvent(p, bar, idx) {
+    if (idx > 0) return p.bars[bar][idx - 1];
+    if (bar > 0 && p.bars[bar - 1].length) return p.bars[bar - 1][p.bars[bar - 1].length - 1];
+    return null;
+  }
+  // Tie the selected note (or the one just entered) to the next note.
+  // If there's no next note yet, add one with the same pitches, so tying across a barline is one tap.
+  function toggleTie() {
+    const p = P(); let loc = null;
+    if (state.sel) loc = { bar: state.sel.bar, idx: state.sel.idx };
+    else {
+      const { bar, pos } = state.cur;
+      if (pos > 0) loc = { bar, idx: pos - 1 };
+      else if (bar > 0 && p.bars[bar - 1].length) loc = { bar: bar - 1, idx: p.bars[bar - 1].length - 1 };
+    }
+    if (!loc) return toast("Enter a note first, then tap Tie");
+    const target = p.bars[loc.bar][loc.idx];
+    if (target.type !== "note") return toast("Rests can't be tied");
+    pushUndo();
+    target.tie = !target.tie;
+    if (target.tie && !nextLoc(p, loc.bar, loc.idx)) {
+      state.sel = null; state.cur = { bar: loc.bar, pos: loc.idx + 1 };
+      insertEvent({ type: "note", dur: state.dur, dot: state.dot, trip: state.trip, notes: target.notes.map(n => ({ ...n })) }, true);
+      return;
+    }
+    if (target.tie) {
+      const n = nextLoc(p, loc.bar, loc.idx), nx = p.bars[n.bar][n.idx];
+      if (nx.type !== "note" || !nx.notes.some(a => target.notes.some(b => b.midi === a.midi))) toast("Tied notes need the same pitch. Change the next note to match.");
+    }
+    commit();
   }
   function setDur(d) {
     state.dur = d; const sel = selected();
@@ -643,7 +705,7 @@ pre.code {
   }
   function syncFromSelection() {
     const sel = selected();
-    if (sel) { state.dur = sel.dur; state.dot = !!sel.dot; }
+    if (sel) { state.dur = sel.dur; state.dot = !!sel.dot; state.trip = !!sel.trip; }
     renderToolbar(); renderPad();
   }
   function setActivePart(i) {
@@ -707,7 +769,8 @@ pre.code {
     add(0, false); add(cap, false);
     parts.forEach(pi => { let t = 0; song.parts[pi].bars[bi].forEach(e => { add(t, !!e.dot); t += evLen(e); }); add(t, false); });
     const list = [...times.values()].sort((a, b) => a.t - b.t);
-    const pos = new Map(); let x = 22;
+    const pad0 = song.bars[bi].repStart ? 12 : 0, pad1 = song.bars[bi].repEnd ? 12 : 0;
+    const pos = new Map(); let x = 22 + pad0;
     list.forEach((o, i) => {
       pos.set(tk(o.t), x);
       if (i < list.length - 1) {
@@ -716,7 +779,7 @@ pre.code {
       }
     });
     const end = pos.get(tk(list[list.length - 1].t));
-    return { pos, w: Math.max(96, end + 10) };
+    return { pos, w: Math.max(96, end + 10 + pad1) };
   }
 
   function render() { renderScore(); renderStatus(); renderToolbar(); }
@@ -738,7 +801,9 @@ pre.code {
     });
     if (row.length) rows.push(row);
 
-    const LANE = Math.max(60, 48 + blocks[0].above), BOTTOM = Math.max(40, blocks[blocks.length - 1].below + 22);
+    const hasVolta = song.bars.some(b => b.volta);
+    TIE = new Map(); const rowInfo = [];
+    const LANE = Math.max(60, 48 + blocks[0].above) + (hasVolta ? 18 : 0), BOTTOM = Math.max(40, blocks[blocks.length - 1].below + 22);
     const gapAfter = j => Math.max(46, blocks[j].below + blocks[j + 1].above + 22);
     let rowH = LANE + BOTTOM;
     blocks.forEach((b, j) => { rowH += b.h + (j < blocks.length - 1 ? gapAfter(j) : 0); });
@@ -749,6 +814,7 @@ pre.code {
       const top = ri * rowH + 6;
       const rowEnd = r[r.length - 1].x + r[r.length - 1].w;
       const head = headFor(ri === 0);
+      CUR_ROW = ri; rowInfo[ri] = { end: rowEnd, head };
       let bt = top + LANE;
       blocks.forEach((b, j) => { b.top = bt; bt += b.h + (j < blocks.length - 1 ? gapAfter(j) : 0); });
       const sysTop = blocks[0].top, sysBot = blocks[blocks.length - 1].top + blocks[blocks.length - 1].h;
@@ -756,7 +822,14 @@ pre.code {
       // Lane: sections + chords
       r.forEach(({ i, x: bx, w }) => {
         const bar = song.bars[i];
-        const sectionY = top + 12, chordY = top + 38;
+        const sectionY = top + 12, chordY = top + (hasVolta ? 56 : 38);
+        if (bar.volta) {
+          const prev = song.bars[i - 1], next = song.bars[i + 1], vy = top + 28;
+          const first = !prev || prev.volta !== bar.volta || bx === r[0].x;
+          out += `<line class="s-ink" x1="${bx + 2}" x2="${bx + w - 2}" y1="${vy}" y2="${vy}" stroke-width="1.2"/>`;
+          if (first) out += `<line class="s-ink" x1="${bx + 2}" x2="${bx + 2}" y1="${vy}" y2="${vy + 13}" stroke-width="1.2"/><text class="disp f-ink" x="${bx + 7}" y="${vy + 13}" font-size="12">${esc(bar.volta)}.</text>`;
+          if ((!next || next.volta !== bar.volta) && bar.repEnd) out += `<line class="s-ink" x1="${bx + w - 2}" x2="${bx + w - 2}" y1="${vy}" y2="${vy + 13}" stroke-width="1.2"/>`;
+        }
         if (bar.section) {
           const sw = 14 + bar.section.length * 7.4;
           out += `<g class="hit" data-chord="${i}"><rect class="f-surf s-ink" x="${bx + 4}" y="${sectionY - 11}" width="${sw}" height="20" rx="4"/><text class="disp f-ink" x="${bx + 4 + sw / 2}" y="${sectionY}" text-anchor="middle" dominant-baseline="middle" font-size="12">${esc(bar.section)}</text></g>`;
@@ -800,12 +873,42 @@ pre.code {
       }
     });
 
+    // Ties: drawn last, from each tied note to the same pitch in the next note (also across lines).
+    TIE.forEach((e, key) => {
+      if (!e.tie) return;
+      const [pi, li, bi, k] = key.split("|").map(Number);
+      const n = nextLoc(song.parts[pi], bi, k); if (!n) return;
+      const f = TIE.get(`${pi}|${li}|${n.bar}|${n.idx}`); if (!f) return;
+      const below = e.dir === "up";
+      e.ys.forEach((y, midi) => {
+        if (!f.ys.has(midi)) return;
+        if (f.row === e.row) out += tieArc(e.x + 7, f.x - 7, y, below);
+        else out += tieArc(e.x + 7, rowInfo[e.row].end + 10, y, below) + tieArc(rowInfo[f.row].head - 4, f.x - 7, f.ys.get(midi), below);
+      });
+    });
+
     svg.setAttribute("viewBox", `0 0 ${width + 50} ${rows.length * rowH + 10}`);
     svg.setAttribute("width", width + 50);
     svg.setAttribute("height", rows.length * rowH + 10);
     svg.innerHTML = out;
   }
 
+  let TIE = new Map(), CUR_ROW = 0;
+  function tieArc(x1, x2, y, below) {
+    if (x2 - x1 < 6) return "";
+    const s = below ? 1 : -1, y0 = y + s * 5, h = Math.min(9, 3 + (x2 - x1) * 0.06), mx = (x1 + x2) / 2;
+    return `<path class="f-ink" d="M${x1},${y0} Q${mx},${y0 + s * h * 2} ${x2},${y0} Q${mx},${y0 + s * (h * 2 - 2.6)} ${x1},${y0} Z"/>`;
+  }
+  function repeatDots(x, lt, L) {
+    const ys = L.type === "staff" ? [lt + 1.5 * G, lt + 2.5 * G] : [lt + L.h / 2 - 6.5, lt + L.h / 2 + 6.5];
+    return ys.map(y => `<circle class="f-ink" cx="${x}" cy="${y}" r="2"/>`).join("");
+  }
+  function startRepeat(bx, lt, L) {
+    return `<line class="s-ink" x1="${bx + 1.5}" x2="${bx + 1.5}" y1="${lt}" y2="${lt + L.h}" stroke-width="3"/><line class="s-ink" x1="${bx + 6}" x2="${bx + 6}" y1="${lt}" y2="${lt + L.h}" stroke-width="1"/>` + repeatDots(bx + 11, lt, L);
+  }
+  function endRepeat(bl, lt, L) {
+    return `<line class="s-ink" x1="${bl - 1.5}" x2="${bl - 1.5}" y1="${lt}" y2="${lt + L.h}" stroke-width="3"/><line class="s-ink" x1="${bl - 6}" x2="${bl - 6}" y1="${lt}" y2="${lt + L.h}" stroke-width="1"/>` + repeatDots(bl - 11, lt, L);
+  }
   function drawClef(L, lt) {
     const bot = lt + 4 * G;
     if (L.clef === "treble") return `<text class="music f-ink" x="4" y="${bot - 2}" font-size="42">𝄞</text>` + (L.oct ? `<text class="mono f-ink" x="15" y="${bot + 20}" font-size="10">8</text>` : "");
@@ -848,15 +951,20 @@ pre.code {
 
     b.layers.forEach(L => {
       const lt = b.top + L.y;
-      if (L.type === "staff") s += staffLayer(items, L, lt, b.active, bi, bx, w, !events.length);
+      if (L.type === "staff") s += staffLayer(items, L, lt, b.active, bi, bx, w, !events.length, `${b.pi}|${b.layers.indexOf(L)}`);
       else if (L.type === "tab") s += tabLayer(items, p, lt, b.active, bi);
       else if (L.type === "rhythm") s += rhythmLayer(items, lt, b.active, bi);
-      // barline
+      // barlines and repeat signs
       const bl = bx + w;
       const last = bi === song.bars.length - 1;
+      const bar = song.bars[bi];
       if (L.type !== "rhythm") {
-        s += `<line class="s-staff" x1="${bl}" x2="${bl}" y1="${lt}" y2="${lt + L.h}" stroke-width="1"/>`;
-        if (last) s += `<line class="s-ink" x1="${bl + 4}" x2="${bl + 4}" y1="${lt}" y2="${lt + L.h}" stroke-width="3"/>`;
+        if (bar.repEnd) s += endRepeat(bl, lt, L);
+        else {
+          s += `<line class="s-staff" x1="${bl}" x2="${bl}" y1="${lt}" y2="${lt + L.h}" stroke-width="1"/>`;
+          if (last) s += `<line class="s-ink" x1="${bl + 4}" x2="${bl + 4}" y1="${lt}" y2="${lt + L.h}" stroke-width="3"/>`;
+        }
+        if (bar.repStart) s += startRepeat(bx, lt, L);
       }
     });
 
@@ -884,7 +992,7 @@ pre.code {
   }
 
   // ---------- Staff layer ----------
-  function staffLayer(items, L, lt, active, bi, bx, w, emptyBar) {
+  function staffLayer(items, L, lt, active, bi, bx, w, emptyBar, tieKey) {
     const bottomStep = L.clef === "treble" ? 30 : 18, mid = bottomStep + 4;
     const yOf = st => lt + 4 * G - (st - bottomStep) * G / 2;
     const ka = keyAlters(); const accState = {};
@@ -904,7 +1012,7 @@ pre.code {
           const cur = key in accState ? accState[key] : ka[sp.letter];
           let acc = null;
           if (sp.alter !== cur) { acc = sp.alter; accState[key] = sp.alter; }
-          o.nn.push({ step, acc });
+          o.nn.push({ step, acc, midi: n.midi });
         });
       }
       return o;
@@ -947,12 +1055,33 @@ pre.code {
         return o;
       };
     });
+    const dirOf = it => { const bm = beamOf.get(it.k); if (bm) return bm.dir; const lo = it.nn[0].step, hi = it.nn[it.nn.length - 1].step; return (lo + hi) / 2 >= mid ? "down" : "up"; };
     its.forEach(it => {
       const col = isSel(it.k) ? "acc" : "ink";
       if (it.ev.type === "rest") s += drawRest(it.ev, it.x, yOf(mid), col);
-      else if (it.nn.length) s += drawChord(it, yOf, bottomStep, col, beamOf.get(it.k));
+      else if (it.nn.length) {
+        s += drawChord(it, yOf, bottomStep, col, beamOf.get(it.k));
+        TIE.set(`${tieKey}|${bi}|${it.k}`, { x: it.x, row: CUR_ROW, dir: dirOf(it), tie: !!it.ev.tie, ys: new Map(it.nn.map(n => [n.midi, yOf(n.step)])) });
+      }
     });
     groups.forEach(g => s += g._draw());
+    // Triplet numbers (with a bracket when the notes aren't beamed together)
+    tripletGroups(its).forEach(tg => {
+      const shown = tg.filter(it => it.ev.type === "rest" || it.nn.length);
+      if (!shown.length) return;
+      let yTop = lt - 6;
+      shown.forEach(it => {
+        if (it.ev.type === "rest") { yTop = Math.min(yTop, yOf(mid) - 16); return; }
+        const hi = it.nn[it.nn.length - 1].step, bm = beamOf.get(it.k), d = dirOf(it);
+        yTop = Math.min(yTop, d === "up" ? (bm ? bm.y : yOf(hi) - 3.5 * G) - 4 : yOf(hi) - 8);
+      });
+      yTop -= 6;
+      const x1 = tg[0].x - 6, x2 = tg[tg.length - 1].x + 8, mx = (x1 + x2) / 2;
+      const beamed = groups.some(g => tg.every(it => g.includes(it)));
+      const col = tg.some(it => isSel(it.k)) ? "acc" : "ink";
+      if (!beamed) s += `<path class="s-${col}" d="M${x1},${yTop + 5} V${yTop} H${mx - 7} M${mx + 7},${yTop} H${x2} V${yTop + 5}" fill="none" stroke-width="1"/>`;
+      s += `<text class="body f-${col}" x="${mx}" y="${yTop + 4}" text-anchor="middle" font-size="12" font-style="italic" font-weight="700">3</text>`;
+    });
     return s;
   }
 
@@ -1056,12 +1185,15 @@ pre.code {
     items.forEach(it => {
       if (it.ev.type !== "note") return;
       const col = active && state.sel && state.sel.bar === bi && state.sel.idx === it.k ? "acc" : "ink";
+      const prev = prevEvent(p, bi, it.k);
       it.ev.notes.forEach(n => {
         if (!n.string) return;
-        const ty = lt + (n.string - 1) * T, label = String(n.fret), tw = label.length * 7.5 + 4;
+        // A note tied from the previous one isn't picked again, so tab shows its fret in parentheses.
+        const tiedTo = prev && prev.tie && prev.type === "note" && prev.notes.some(m => m.midi === n.midi);
+        const ty = lt + (n.string - 1) * T, label = tiedTo ? `(${n.fret})` : String(n.fret), tw = label.length * (tiedTo ? 6.5 : 7.5) + 4;
         const bad = n.fret < 0 || n.fret > maxFret(p);
         s += `<rect class="f-paper" x="${it.x - tw / 2}" y="${ty - 7}" width="${tw}" height="14"/>`;
-        s += `<text class="mono ${bad ? "f-dan" : "f-" + col}" x="${it.x}" y="${ty + 0.5}" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12.5">${label}</text>`;
+        s += `<text class="mono ${bad ? "f-dan" : tiedTo ? "f-mut" : "f-" + col}" x="${it.x}" y="${ty + 0.5}" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="${tiedTo ? 11 : 12.5}">${label}</text>`;
       });
     });
     return s;
@@ -1093,6 +1225,10 @@ pre.code {
         if (nb && nb.ev.dur === 16) s += `<rect class="f-ink" x="${it.x}" y="${by - 9}" width="${nb.x - it.x}" height="3.5"/>`;
         else if (!(pb && pb.ev.dur === 16)) s += `<rect class="f-ink" x="${j < g.length - 1 ? it.x : it.x - 8}" y="${by - 9}" width="8" height="3.5"/>`;
       });
+    });
+    tripletGroups(items).forEach(tg => {
+      const mx = (tg[0].x + tg[tg.length - 1].x) / 2;
+      s += `<text class="body f-ink" x="${mx}" y="${by + 13}" text-anchor="middle" font-size="11" font-style="italic" font-weight="700">3</text>`;
     });
     return s;
   }
@@ -1156,6 +1292,7 @@ pre.code {
     durGroup.querySelectorAll("[data-dur]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.dur === state.dur)));
     document.getElementById("dotBtn").setAttribute("aria-pressed", String(state.dot));
     document.getElementById("chordBtn").setAttribute("aria-pressed", String(state.chord));
+    document.getElementById("tripBtn").setAttribute("aria-pressed", String(state.trip));
   }
 
   const pad = document.getElementById("pad");
@@ -1255,15 +1392,38 @@ pre.code {
       <div class="chips" id="chordChips">${diatonicChords().map(c => `<button data-v="${c}">${prettyChord(c)}</button>`).join("")}</div>
       <div class="field"><label for="secIn">Section label</label><input id="secIn" value="${esc(b.section)}" placeholder="Starts a section here (optional)"></div>
       <div class="chips" id="secChips">${secChips.map(c => `<button data-v="${c}">${c}</button>`).join("")}</div>
-      <div class="panel-actions"><button class="btn" id="chClear">Clear both</button><button class="btn primary" id="chDone">Done</button></div>`);
+      <div class="field"><label>Repeats</label></div>
+      <div class="chips" id="repChips"><button data-r="repStart" aria-pressed="${!!b.repStart}">Start repeat ‖:</button><button data-r="repEnd" aria-pressed="${!!b.repEnd}">End repeat :‖</button></div>
+      <div class="field"><label>Ending</label></div>
+      <div class="chips" id="voltaChips">${[["", "None"], ["1", "1st"], ["2", "2nd"], ["3", "3rd"]].map(([v, l]) => `<button data-e="${v}" aria-pressed="${(b.volta || "") === v}">${l}</button>`).join("")}</div>
+      <p>Mark every bar inside an ending. A 1st ending usually closes with End repeat.</p>
+      <div class="panel-actions"><button class="btn" id="chClear">Clear chord and label</button><button class="btn primary" id="chDone">Done</button></div>`);
     const ci = document.getElementById("chordIn"), si = document.getElementById("secIn");
+    const draft = { repStart: !!b.repStart, repEnd: !!b.repEnd, volta: b.volta || "" };
+    document.getElementById("repChips").onclick = e => {
+      const btn = e.target.closest("[data-r]"); if (!btn) return;
+      draft[btn.dataset.r] = !draft[btn.dataset.r]; btn.setAttribute("aria-pressed", String(draft[btn.dataset.r]));
+    };
+    document.getElementById("voltaChips").onclick = e => {
+      const btn = e.target.closest("[data-e]"); if (!btn) return;
+      draft.volta = btn.dataset.e;
+      document.querySelectorAll("#voltaChips [data-e]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.e === draft.volta)));
+    };
     document.getElementById("chordChips").onclick = e => {
       const v = e.target.closest("[data-v]"); if (!v) return;
       const cur = ci.value.trim().split(/\s+/).filter(Boolean);
       ci.value = cur.length === 1 ? cur[0] + " " + v.dataset.v : v.dataset.v;
     };
     document.getElementById("secChips").onclick = e => { const v = e.target.dataset.v; if (v) si.value = v; };
-    const close = apply => { if (apply) { pushUndo(); b.chord = ci.value.trim(); b.section = si.value.trim(); commit(); } closeSheet(); };
+    const close = apply => {
+      if (apply) {
+        pushUndo(); b.chord = ci.value.trim(); b.section = si.value.trim();
+        ["repStart", "repEnd"].forEach(k => { if (draft[k]) b[k] = true; else delete b[k]; });
+        if (draft.volta) b.volta = draft.volta; else delete b.volta;
+        commit();
+      }
+      closeSheet();
+    };
     document.getElementById("chDone").onclick = () => close(true);
     document.getElementById("chClear").onclick = () => { ci.value = ""; si.value = ""; close(true); };
     ov.addEventListener("click", e => { if (e.target.id === "ov") close(true); });
@@ -1341,16 +1501,18 @@ pre.code {
   }
 
   // ================= LilyPond export =================
-  const STD = { 48: "1.", 32: "1", 24: "2.", 16: "2", 12: "4.", 8: "4", 6: "8.", 4: "8", 3: "16.", 2: "16", 1: "32" };
+  // Durations are counted in 96ths of a whole note, so triplets come out as whole numbers.
+  const STD = { 144: "1.", 96: "1", 72: "2.", 48: "2", 36: "4.", 24: "4", 18: "8.", 12: "8", 9: "16.", 6: "16", 3: "32" };
   function durTok(units) {
     if (STD[units]) return STD[units];
-    const { den } = timeSig(), per = 32 / den;
+    const { den } = timeSig(), per = 96 / den;
     if (units % per === 0) return `${den}*${units / per}`;
-    return `32*${units}`;
+    return units % 3 === 0 ? `32*${units / 3}` : `32*${units}/3`;
   }
   function restsFor(units, r) {
     const out = []; let u = units;
-    [32, 24, 16, 12, 8, 6, 4, 3, 2, 1].forEach(n => { while (u >= n) { out.push(r + STD[n]); u -= n; } });
+    [96, 72, 48, 36, 24, 18, 12, 9, 6, 3].forEach(n => { while (u >= n) { out.push(r + STD[n]); u -= n; } });
+    if (u > 0) out.push(`${r}32*${u}/3`);
     return out;
   }
   function lyPitch(m) {
@@ -1374,31 +1536,38 @@ pre.code {
     return { root: lyRoot(m[1], m[2]), qual: map[m[3]], bass: m[4] ? "/" + lyRoot(m[4], m[5]) : "" };
   }
   function partMusic(p, filter) {
-    const { num, den } = timeSig(); const cap32 = num * 32 / den;
+    const { num, den } = timeSig(); const cap = num * 96 / den;
     const fretted = partKind(p).fretted;
     const lines = [];
     p.bars.forEach((evs, i) => {
-      if (!evs.length) { lines.push(`  R${durTok(cap32)} | % bar ${i + 1}`); return; }
-      const toks = evs.map(e => {
+      if (!evs.length) { lines.push(`  R${durTok(cap)} | % bar ${i + 1}`); return; }
+      const tok = e => {
         const d = e.dur + (e.dot ? "." : "");
         if (e.type === "rest") return "r" + d;
         const ns = (filter ? e.notes.filter(n => filter(n.midi)) : e.notes).slice().sort((a, b) => a.midi - b.midi);
         if (!ns.length) return "s" + d;
-        const pitch = n => lyPitch(n.midi) + (fretted && n.string && n.fret >= 0 && n.fret <= maxFret(p) ? `\\${n.string}` : "");
-        if (ns.length === 1) {
-          const n = ns[0];
-          return lyPitch(n.midi) + d + (fretted && n.string && n.fret >= 0 && n.fret <= maxFret(p) ? `\\${n.string}` : "");
-        }
-        return `<${ns.map(pitch).join(" ")}>${d}`;
+        const str = n => fretted && n.string && n.fret >= 0 && n.fret <= maxFret(p) ? `\\${n.string}` : "";
+        const tie = e.tie ? "~" : "";
+        if (ns.length === 1) return lyPitch(ns[0].midi) + d + str(ns[0]) + tie;
+        return `<${ns.map(n => lyPitch(n.midi) + str(n)).join(" ")}>${d}${tie}`;
+      };
+      // Wrap triplet groups in \tuplet 3/2 { ... }
+      let t = 0;
+      const items = evs.map((ev, k) => { const it = { ev, k, t }; t += evLen(ev); return it; });
+      const groupOf = new Map();
+      tripletGroups(items).forEach(g => g.forEach((it, j) => groupOf.set(it.k, { first: j === 0, last: j === g.length - 1 })));
+      const toks = items.map(it => {
+        const g = groupOf.get(it.k), s = tok(it.ev);
+        return (g && g.first ? "\\tuplet 3/2 { " : "") + s + (g && g.last ? " }" : "");
       });
-      const f32 = Math.round(fillOf(evs) * 32);
-      if (f32 < cap32) toks.push(...restsFor(cap32 - f32, "r"));
-      lines.push(`  ${toks.join(" ")} | % bar ${i + 1}${f32 > cap32 ? " (too long)" : ""}`);
+      const f = Math.round(fillOf(evs) * 96);
+      if (f < cap) toks.push(...restsFor(cap - f, "r"));
+      lines.push(`  ${toks.join(" ")} | % bar ${i + 1}${f > cap ? " (too long)" : ""}`);
     });
     return lines.join("\n");
   }
   function buildLily() {
-    const { num, den } = timeSig(); const cap32 = num * 32 / den;
+    const { num, den } = timeSig(); const cap32 = num * 96 / den;
     const title = (song.title || "Untitled").replace(/"/g, '\\"');
     const km = /^([A-G])([#b]?)(m?)$/.exec(song.key);
     const keyLy = `\\key ${lyRoot(km[1], km[2])} ${km[3] ? "\\minor" : "\\major"}`;
@@ -1407,14 +1576,27 @@ pre.code {
       const cs = (b.chord || "").trim().split(/\s+/).filter(Boolean);
       if (!cs.length) return `s${durTok(cap32)}`;
       const each = cap32 / cs.length;
-      const dt = Number.isInteger(each) ? durTok(each) : `32*${cap32}/${cs.length}`;
+      const dt = Number.isInteger(each) ? durTok(each) : `32*${cap32}/${cs.length * 3}`;
       return cs.map(c => {
         const p = lyChord(c);
         if (!p) { warn.push(`% bar ${i + 1}: chord "${c}" not recognized, left out`); return `s${dt}`; }
         return `${p.root}${dt}${p.qual}${p.bass}`;
       }).join(" ");
     });
-    const struct = song.bars.map(b => (b.section ? `\\mark \\markup \\box "${b.section.replace(/"/g, '\\"')}" ` : "") + `s${durTok(cap32)}`);
+    // Structure voice: section marks, repeat barlines and ending brackets for every bar.
+    const struct = song.bars.map((b, i) => {
+      const prev = song.bars[i - 1], next = song.bars[i + 1];
+      const pre = [], post = [];
+      const cmds = [];
+      if (prev && prev.volta && prev.volta !== b.volta) cmds.push("(volta #f)");
+      if (b.volta && (!prev || prev.volta !== b.volta)) cmds.push(`(volta "${b.volta}.")`);
+      if (cmds.length) pre.push(`\\set Score.repeatCommands = #'(${cmds.join(" ")})`);
+      if (b.repStart && !(prev && prev.repEnd)) pre.push(`\\bar ".|:"`);
+      if (b.section) pre.push(`\\mark \\markup \\box "${b.section.replace(/"/g, '\\"')}"`);
+      if (b.repEnd) post.push(next && next.repStart ? `\\bar ":|.|:"` : `\\bar ":|."`);
+      if (!next && b.volta) post.push(`\\set Score.repeatCommands = #'((volta #f))`);
+      return [...pre, `s${durTok(cap32)}`, ...post].join(" ");
+    });
     const V = "ABCDEFGHIJKLMNOP";
     let vars = "", scoreStaves = "", books = "";
     song.parts.forEach((p, i) => {
@@ -1446,7 +1628,7 @@ global = { ${keyLy} \\time ${num}/${den} }
 
 structure = {
   \\tempo 4 = ${song.tempo || 100}
-  ${struct.join(" ")}
+${struct.map((s, i) => `  ${s} % bar ${i + 1}`).join("\n")}
 }
 
 harmony = \\chordmode {
@@ -1508,7 +1690,7 @@ ${staves}  >>
     const o = c.createOscillator(), o2 = c.createOscillator(), g = c.createGain(), g2 = c.createGain();
     o.type = "triangle"; o2.type = "sine"; o.frequency.value = f; o2.frequency.value = f * 2; g2.gain.value = 0.25;
     o.connect(g); o2.connect(g2); g2.connect(g); g.connect(c.destination);
-    const end = when + Math.max(0.15, Math.min(len, 1.6));
+    const end = when + Math.max(0.15, Math.min(len, 4));
     g.gain.setValueAtTime(0.0001, when);
     g.gain.exponentialRampToValueAtTime(vol, when + 0.008);
     g.gain.exponentialRampToValueAtTime(0.0001, end);
@@ -1524,22 +1706,47 @@ ${staves}  >>
     const c = ctx(); if (!c) return toast("Sound isn't available in this browser");
     if (c.state === "suspended") c.resume();
     const spw = 4 * 60 / (song.tempo || 100); // seconds per whole note
-    const start = state.sel ? state.sel.bar : 0;
+    const order = playOrder();
+    const startBar = state.sel ? state.sel.bar : (state.cur.pos === 0 && state.cur.bar > 0 ? state.cur.bar : 0);
+    let si = order.indexOf(startBar); if (si < 0) si = 0;
+    const seq = order.slice(si);
     const t0 = c.currentTime + 0.1, barSec = barCap() * spw;
-    let total = 0;
     song.parts.forEach(p => {
-      p.bars.slice(start).forEach((evs, k) => {
+      const open = new Map(); // midi -> sounding note that may continue through a tie
+      const flush = m => { const o = open.get(m); tone(m, o.start, o.len, o.vol); open.delete(m); };
+      seq.forEach((bi, k) => {
         let tt = t0 + k * barSec;
-        evs.forEach(e => {
+        p.bars[bi].forEach(e => {
           const len = evLen(e) * spw;
-          if (e.type === "note") e.notes.forEach(n => tone(n.midi, tt, len, 0.2 / Math.sqrt(e.notes.length)));
+          if (e.type === "note") {
+            const now = new Set(e.notes.map(n => n.midi));
+            [...open.keys()].forEach(m => { if (!now.has(m)) flush(m); });
+            e.notes.forEach(n => { const o = open.get(n.midi); if (o) o.len += len; else open.set(n.midi, { start: tt, len, vol: 0.2 / Math.sqrt(e.notes.length) }); });
+            if (!e.tie) [...open.keys()].forEach(flush);
+          } else [...open.keys()].forEach(flush);
           tt += len;
         });
       });
+      [...open.keys()].forEach(flush);
     });
-    total = (song.bars.length - start) * barSec;
+    const total = seq.length * barSec;
     state.playing = setTimeout(stop, total * 1000 + 300);
     playBtn.textContent = "■ Stop";
+  }
+  // The order bars are played in, following repeats and 1st/2nd endings.
+  function playOrder() {
+    const bars = song.bars, order = [];
+    let i = 0, repStart = 0, pass = 1, guard = 0;
+    while (i < bars.length && guard++ < 4000) {
+      const b = bars[i];
+      if (b.repStart && i !== repStart) { repStart = i; pass = 1; }
+      if (b.volta && !b.volta.split(/[.,\s]+/).map(Number).includes(pass)) { i++; continue; }
+      order.push(i);
+      if (b.repEnd && pass < 2) { pass++; i = repStart; continue; }
+      if (b.repEnd) { pass = 1; repStart = i + 1; }
+      i++;
+    }
+    return order;
   }
   function stop() {
     if (state.playing) clearTimeout(state.playing); state.playing = null;
@@ -1579,6 +1786,8 @@ ${staves}  >>
   document.getElementById("dotBtn").onclick = toggleDot;
   document.getElementById("restBtn").onclick = enterRest;
   document.getElementById("chordBtn").onclick = toggleChord;
+  document.getElementById("tieBtn").onclick = toggleTie;
+  document.getElementById("tripBtn").onclick = toggleTrip;
   document.getElementById("leftBtn").onclick = () => move(-1);
   document.getElementById("rightBtn").onclick = () => move(1);
   document.getElementById("delBtn").onclick = del;
@@ -1599,6 +1808,8 @@ ${staves}  >>
     else if (k === ".") toggleDot();
     else if (k.toLowerCase() === "r") enterRest();
     else if (k.toLowerCase() === "s") toggleChord();
+    else if (k.toLowerCase() === "t") toggleTie();
+    else if (k === "3" && state.mode === "notation") toggleTrip();
     else if (state.mode === "tab" && /^[0-9]$/.test(k)) {
       clearTimeout(state.fretTimer);
       state.fretBuf += k;
