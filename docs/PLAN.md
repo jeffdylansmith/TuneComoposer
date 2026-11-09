@@ -1,58 +1,111 @@
-# Tune Composer: Plan
+# Tune Composer: Positioning and Development Plan
 
-## Vision
+*Last updated November 8, 2026*
 
-A web app for running a label. Artists, Acts and collaborators work on songs together. Charts are engraved by LilyPond, and every change is versioned. Each recording session is linked to the exact chart version it was tracked against.
+## Positioning
 
-## Core ideas
+**One-liner:** Flat is where you write a score. Tune Composer is where a band's songs live, from the first chart to the release, and where other musicians come to play them.
 
-- **LilyPond is the source of truth.** The editor keeps its own simple model of notes, frets, chords and sections, and generates LilyPond from it. Users never have to edit LilyPond by hand, but the plain text still diffs and merges cleanly.
-- **Git under the hood.** Each song is a repo. The app adds music-aware features on top: visual score diffs, commit notes such as "bridge rewrite", and branches named after arrangements (`acoustic`, `full-band`).
-- **Write once, export many.** An arrangement has parts and sections. Each player has preferences (notation, tab or both, tuning, capo). "Export parts" generates the score plus a PDF for every player, tagged with its version, so stale charts are easy to spot.
-- **Touch-first web app.** It runs in iPad Safari and can be added to the home screen, from a single codebase. The editor is designed for fingers first, and hardware keyboard shortcuts also work.
+**Who it's for, in order:**
+1. **Bands and Acts.** The working unit is an Act with players, not a teacher with students. The core question it answers: what does each player need at Thursday's practice?
+2. **The label.** Artists, songs, sessions and projects in one place.
+3. **The musician community.** Public arrangements that other musicians find, play, fork and learn from. The public side is aimed at musicians, not fans.
 
-## Data model (draft)
+**What's different from Flat, MuseScore and tab sites:**
+- **Arrangements branch and fork.** They aren't single documents. You can have an acoustic branch and a full-band branch, and fork someone's public arrangement for your lineup. Every change has a version, and you can see what changed in the music.
+- **Parts come first.** Every player gets their part in the format they read (notation, tab or both, in their tuning), and the app knows when someone's chart is stale.
+- **The chart is connected to the music.** A song links its charts to the sessions recorded from them, and later to releases.
+- **Community built around arrangements.** Musicians follow arrangers and Acts, fork and credit each other, and eventually buy and sell charts.
 
-- **User**: a person with an account. Reading preferences live on their profile.
-- **Artist / Act**: an artist profile or a band. Users join Acts.
-- **Song**: belongs to an Artist or Act. It lists users as writers/composers and as players.
-- **Arrangement**: a version of a song (full band, acoustic) with parts and sections. Stored as LilyPond in the song's repo.
-- **Part**: an instrument within an arrangement.
-- **Session**: a recording date. It records the device (Tascam Model 12 or MPC Live), a file manifest with names, sizes and hashes, the takes, and the chart commit it was recorded against.
-- **Project**: a release, rehearsal series or other plan, with a schedule, linked to songs and people.
+**Honest risks:**
+- A notation editor never ends. We won't out-build Flat or MuseScore on engraving features, so we compete on the workflow around the chart.
+- A community is worthless until people are in it. We seed it with real content from our own label and bands before opening it up.
 
-**Visibility:** Users see what they create or are tied to through an Act, an Artist or a credit on a song. Songs and profiles marked public are discoverable by anyone.
+## Community ideas (for the musician audience)
 
-## Roadmap
+These build on what the tool already does, so they need little invention:
+- **Forks with credit.** "Arranged by X, forked from Y." The fork tree is visible, so good arrangements spread and their authors get the credit.
+- **Arranger and Act profiles.** Public arrangements, instruments played, and the forks and plays each one has received.
+- **Browse by what you play.** Find songs that have a bass tab part in drop D, or 5-piece arrangements with horns.
+- **Lineup-aware forking.** Fork an arrangement for my band (two guitars, bass and keys, no horns) and get a starting point with parts mapped to my players.
+- **Requests.** "Looking for a full-band arrangement of ___", which arrangers can answer.
+- **Comments on bars.** Feedback pinned to a measure, the way code review comments pin to a line.
+- **Later: paid charts.** Arrangers sell charts and premium arrangements, with the creator keeping most of the money, Bandcamp-style.
+- **Licensing:** Public arrangements of original songs are simple. Arrangements of covers need a licensing plan before charts can be sold. Free sharing of cover arrangements also needs a policy decision.
 
-1. **Chart editor**
-   - Notation entry: pick durations and enter notes from an on-screen piano keyboard
-   - Tab-first entry: pick strings and enter frets, for players who compose in tab. Notation and tab are two views of the same music.
-   - Chords and section labels
-   - Guitar and bass tunings, including custom tunings
-   - Later in this phase: chord-chart-first entry (type the progression and sections, then fill in parts)
-2. **Part export**: full score plus per-player PDFs in each player's preferred format, with transposing instruments and collapsed multi-measure rests
-3. **Version history**: commits, branches, text and visual diffs, merging
-4. **Users, Acts and permissions**: profiles, membership, credits, visibility, public discovery
-5. **Sessions**: recording logs with a Tascam/MPC folder import that builds the manifest automatically
-6. **Projects and business**: planning and scheduling, then splits, registrations, licensing and releases
-7. **File storage**: audio and project files (git LFS or cloud storage), added without changing the session data model
+## Development order
 
-**Stretch goal:** playing parts in via MIDI or importing them from the MPC.
+The principle: each phase ships something useful on its own. Editor polish continues throughout, driven by what real charts expose rather than by a feature checklist.
 
-## Prototype status
+### Phase 1: An editor good enough for real practice charts
+- **Done (prototype):**
+  - Parts: guitar, bass, keys and lead parts
+  - Entry: piano entry, tab-first entry, stacked chords
+  - Engraving: beaming, key and time signatures
+  - Custom tunings
+  - Chord lane and section labels
+  - Playback
+  - LilyPond export with a score and per-player parts
+- **Still needed:** ties, triplets, repeats and endings, and a check that the LilyPond output compiles
+- **Done when:** you can chart the next three songs your band actually plays without workarounds
 
-- `prototypes/chart-editor`: a multi-part arrangement with guitar, bass, keys (grand staff) and lead/vocal parts.
-  - Entry: piano entry, tab-first entry (the staff always stays above the tab), and stacked chords
-  - Engraving: beaming by beat group, key signatures with accidentals spelled for the key, and time signatures (2/4, 3/4, 4/4, 5/4, 6/8, 7/8, 9/8, 12/8)
-  - Fretted parts: tuning presets plus per-string custom tunings and extra strings
-  - Chord lane: chord symbols (two per bar allowed) and section labels
-  - Playback of all parts
-  - Export: LilyPond output with a full score book plus one part book per instrument, with tab for fretted parts
-  - Not yet: ties, triplets, time or key changes mid-song, multiple voices per staff, lyrics, and saving anywhere except the browser
-- `prototypes/part-export`: a working generator for the score and per-player parts. It's untested against a real LilyPond install so far.
+### Phase 2: The backbone
+- Accounts and sign-in
+- Songs saved on a server instead of in one browser
+- Every save is a version in git, with history and restore
+- A server running LilyPond that produces real PDFs for the score and every part
+- Pick hosting and set up deploys
+- **Done when:** you can start a chart on the iPad, open it on a laptop, and print parts from either
+
+### Phase 3: Private collaboration in your circle
+- Acts and artist profiles; invite players and set roles (owner, editor, player)
+- Songs owned by Acts; writer and player credits
+- Visibility: you see what you created or are tied to
+- Branches for arrangements, visual diffs, proposals the owner approves
+- Player reading preferences on profiles drive part export, and the app flags stale charts
+- **Done when:** your own bands use it for real practices
+
+### Phase 4: Label tools
+- Recording sessions (Tascam Model 12, MPC Live) with a file manifest from a folder import, each linked to a chart version
+- Projects and scheduling for releases, rehearsals and sessions
+- **Done when:** you run a release or a recording block through it
+
+### Phase 5: The public community
+- Public arrangements and profiles; browse and search by instrument, tuning and lineup
+- Forking with credit and a visible fork tree
+- Follows, comments pinned to bars, requests
+- Seed with the label's own public arrangements before opening up
+- **Done when:** musicians outside your circle fork and play arrangements
+
+### Phase 6: Marketplace and business
+- Paid charts and arrangements, with a licensing approach for covers
+- Splits, registrations and release metadata
+- Audio and project file storage
+
+**Stretch goals:** playing parts in by MIDI or importing them from the MPC; chord-chart-first entry; Apple Pencil input.
+
+## Architecture notes
+
+- **The editor is a separate module** from the social and catalog app. It reads and writes one song model and produces LilyPond. The rest of the app never needs to know notation details.
+- **One shared data model** underlies everything, so design it in Phase 2 even though most of it surfaces later:
+  - User
+  - Act or Artist
+  - Membership (with role)
+  - Song, with credits (writer or player)
+  - Arrangement (a branch), Part, and Version (a git commit)
+  - Session
+  - Project
+  - Visibility (private, Act, or public)
+  - Fork (with a parent link)
+- **LilyPond is the stored format.** It diffs as plain text and renders on the server. The editor's JSON model is what the UI edits, and it's regenerated from or saved alongside the LilyPond.
+- **Web app, touch-first,** tested on iPad throughout. Offline read-only charts for practice can come later; offline editing is deferred.
 
 ## Open questions
+- Hosting provider and stack for Phase 2
+- Whether the editor's JSON model or the LilyPond file is the source of truth when they disagree. The current lean is JSON for editing and LilyPond as the versioned, rendered output, with both committed.
+- Pricing and revenue split for paid charts
+- Policy for public arrangements of cover songs
 
-- Hosting: a small server runs LilyPond and git and holds the database.
-- Read-only offline charts for practice (easy) vs offline editing (hard, deferred).
+## Prototypes in this repo
+- `prototypes/chart-editor/`: the editor (open `index.html`)
+- `prototypes/part-export/`: the original score and per-player parts script
